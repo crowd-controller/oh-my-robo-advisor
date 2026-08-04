@@ -93,7 +93,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
 | 마일스톤 | 스테이지 | 단위 수 | 완료 | 진행률 | 상태 |
 |---|---|---:|---:|---:|---|
-| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 7 | 13% | ◐ |
+| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 8 | 15% | ◐ |
 | **M1** 데이터·브로커 read-only·감시 데이터층 | S09~S17 | 47 | 0 | 0% | ☐ |
 | **M2** 엔진·백테스트 | S18~S25 | 37 | 0 | 0% | ☐ |
 | **M3** dry-run 라이브 루프·감시 정책층 | S26~S32 | 43 | 0 | 0% | ☐ |
@@ -105,16 +105,16 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 | **M8** 목표기반·리포팅·계좌 자동화 | S49~S51 | 14 | 0 | 0% | ☐ |
 | **M10a** 자가 개선 — 지식 수집 | S52 | 7 | 0 | 0% | ☐ |
 | *(보류)* labs 챌린저층 | S53 | 6 | 0 | — | ⏸ |
-| **합계** | **53** | **307** | **7** | **2.3%** | |
+| **합계** | **53** | **307** | **8** | **2.6%** | |
 
 > **M0의 범위에 관한 주의**: 계획 04 §2 M0이 명시적으로 열거한 것은 저장소 구조·설정 계층·TR-ID 매핑·Docker·CI·감사 로거다. 여기에 `core`·`persistence`·`runtime`을 함께 넣은 근거는 **설계 03 §4.4가 "초기 리비전 = M0에서 §3 전 테이블 + 트리거 + 전 인덱스 생성"으로 확정**했고, 설계 01 §2.4가 "전 패키지는 M0부터 빈 패키지로라도 존재해야 한다"를 요구하며, 감사 로거가 `core.ids`(ULID)·`core.money`(KST 직렬화)에 의존하기 때문이다. 즉 M0는 **"M1이 착수 가능해지는 최소 기반"**이며 로드맵의 M0 열거를 줄이거나 늘린 것이 아니다.
 
 ### 2.2 현재 작업 위치
 
 ```
-▶ 현재 단위 : S02-1 (예외 계층 core.errors)
-  직전 완료 : S01-7 (아키텍처 테스트 AST 유틸) — **S01 스테이지 완료**
-  다음 단위 : S02-2 (Decimal·화폐 규약 core.money)
+▶ 현재 단위 : S02-2 (Decimal·화폐 규약 core.money)
+  직전 완료 : S02-1 (예외 계층 core.errors)
+  다음 단위 : S02-3 (식별자 체계 core.ids)
 ```
 
 ---
@@ -165,7 +165,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
 | 단위 | 제목 | 산출 파일 | 완료 판정(DoD) | 근거 | 상태 | 커밋 |
 |---|---|---|---|---|:--:|---|
-| **S02-1** | 예외 계층 `core.errors` | `src/omra/core/errors.py`, `tests/unit/core/test_errors.py` | `OmraError`(code·retryable·context·`to_audit_payload`) + 트리 전량(`DomainError`/`InvariantViolation`/`IdentifierError`/`TickRuleError`/`LotStepError`/`TransitionError`/`PretradeRejection`/`TaxSellBlockedError`/`EngineError`/`ConfigError`/`BrokerError` 5종/`DataError` 계열/`CalendarError`/`PersistenceError`) · `code` 고유성 스냅샷 · retryable 기본값 표 일치 · `to_audit_payload()`에 계좌번호 패턴 유입 시 실패하는 필터 테스트 | 02 §10 [DD-02-12·20] | ☐ | |
+| **S02-1** | 예외 계층 `core.errors` | `src/omra/core/errors.py`, `tests/unit/core/test_errors.py` | `OmraError`(`code`·`retryable`·`context`·`to_audit_payload`) + 트리 21종 전량 · **트리 구조 21쌍 파라미터 검증** · `code` 고유성 + 점표기 형식 · **retryable 기본값 11종 표 일치**(`BrokerUnavailable`/`BrokerRateLimited`만 True) · tenacity 술어가 **타입만으로** 판정 가능함을 계약 테스트로 고정 · `OmraError` 밖을 직접 상속한 클래스 0건(§10.2 규칙 5 기계 검사) · `PretradeRejection`의 `step`·`order_id`·`reason`·`retry_today` payload · `__all__` ↔ 실제 클래스 집합 일치 · core 내부 import 유출 0 · **248 passed**. 마스킹 필터 테스트는 `audit.masking` 구현 후 S04-1에서 결선 | 02 §10 [DD-02-12·20] | ☑ | `feat(core): 예외 계층과 retryable 규약 구현` |
 | **S02-2** | Decimal·화폐 규약 `core.money` | `src/omra/core/money.py`, `tests/unit/core/test_money.py`, `tests/property/test_inv_money.py` | `Dec`가 float 입력 거부(0.1 포함) · `to_text`/`from_text` 왕복 항등 + 스케일 보존 + 지수 표기 부재(property) · `krw_floor` ROUND_DOWN 고정(음수 포함) · `qty_floor` lot_step 1·1e-8 격자 · `usd_budget`이 `V/(rate×1.005)`와 수치 일치 · `to_kst_text`/`from_kst_text` naive 거부 | 02 §5 [DD-02-9·10·15] | ☐ | |
 | **S02-3** | 식별자 체계 `core.ids` | `src/omra/core/ids.py`, `tests/unit/core/test_ids.py` | `new_id()` 10⁶회 유일 + 단조(발급 순서 == 사전식 정렬) · `Market` enum 5값 · `instrument_key`/`parse_instrument_key` 왕복 항등(`KRW-BTC` 하이픈 보존, 첫 콜론 분리) · 실패 5형이 전부 `IdentifierError` | 02 §3.1~§3.2 [DD-02-1·2] | ☐ | |
 | **S02-4** | 시각 추상 `core.clock` | `src/omra/core/clock.py`, `tests/unit/core/test_clock.py` | `Clock` ABC(`now_utc`·`now_kst`·`sleep_until`·`sleep_for`) · `SystemClock` 오프셋 +09:00 고정 · `SimClock` 후퇴 거부·naive 거부·벽시계 경과 ≈ 0 · `sleep_until` 과거 시각 즉시 반환 | 02 §8 [DD-02-11·21] | ☐ | |

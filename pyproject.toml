@@ -132,6 +132,11 @@ ignore = ["PLR0913",   # 인자 수 — 도메인 팩토리·시그니처가 길
 "random.random".msg         = "시드 없는 난수는 재현성을 깬다 (설계 16 §11.2)"
 
 [tool.ruff.lint.per-file-ignores]
+# 예외 이름의 정본은 설계 02 §10.1이며 `InvariantViolation`·`PretradeRejection`·
+# `BrokerRateLimited`·`BrokerUnavailable`·`AmbiguousOrderState` 는 Error 접미사가
+# 없는 것이 의도다 — 전자 둘은 "오류"가 아니라 각각 버그 신호와 판정 신호를
+# 가리킨다. 이름을 바꾸면 설계서 16종의 인용이 전부 어긋난다.
+"src/omra/core/errors.py" = ["N818"]
 "src/omra/core/clock.py" = ["DTZ005","TID251"]   # Clock 구현체만 직접 호출 가능
 "tests/**"               = ["S101","ARG","PLR2004","DTZ","TID251"]
 "src/omra/cli/**"        = ["T20"]                # CLI 표준출력은 허용
