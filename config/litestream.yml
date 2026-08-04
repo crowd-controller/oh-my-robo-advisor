@@ -1,0 +1,20 @@
+# SQLite 실시간 복제 — 정본: 계획 01 §6.5
+#
+# 이 파일이 없으면 docker-compose 의 litestream 서비스가 아무것도 복제하지
+# 않는다. "RPO ≈ 초" 주장의 실체는 아래 sync-interval 한 줄이다.
+#
+# 스키마 검증 대상이 아니다(외부 도구 설정 — 설계 04 §5.11).
+dbs:
+  - path: /app/var/db/omra.sqlite
+    replicas:
+      - type: s3
+        bucket: ${LITESTREAM_BUCKET}       # .env.litestream
+        path: omra-db
+        sync-interval: 1s                  # RPO ~= 초의 실체
+        snapshot-interval: 24h
+        retention: 720h                    # 30일
+
+# weekly_maintenance 의 VACUUM 은 DB를 재작성하므로 Litestream 이 전체 스냅샷을
+# 재전송한다. 단일 사용자 DB 크기에서 주 1회 재전송은 허용 가능하다. 단 VACUUM
+# 직후 다음 스냅샷 완료 전까지는 복원 지점이 직전 스냅샷이므로,
+# weekly_maintenance 는 VACUUM 후 스냅샷 1회 성공을 확인하고 종료한다.

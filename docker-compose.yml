@@ -1,0 +1,93 @@
+# oh-my-robo-advisor — 배포 토폴로지
+# 정본: 설계 01 §7.1 / 계획 01 §1.6
+#
+# 상시 컨테이너 2개(app · litestream) + 일회성 실행 서비스 1개(tools).
+# 의도적으로 **없는 것**: 사이드카(autoheal 등 — docker.sock을 주지 않는다),
+# Redis·메시지큐·PostgreSQL(계획 00 §5-1·§6.3), 상시 tools.
+
+name: omra
+
+x-common: &common
+  # 세 서비스 모두 non-root · read_only · 필요한 tmpfs 만 명시한다.
+  # 쓰기는 named volume 으로만 나간다 (계획 01 §7-6).
+  user: "1000:1000"
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  # ── 봇 엔진 + 스케줄러 + FastAPI + Telegram + T0 WS (단일 프로세스) ──
+  app:
+    <<: *common
+    build: .
+    image: "omra:${OMRA_TAG:-dev}" # [DD-01-10] 태깅·롤백
+    init: true # PID 1 시그널 전달 — graceful shutdown 의 전제
+    restart: unless-stopped
+    stop_grace_period: 40s # [DD-01-5] 내부 예산 30초 + 마진 10초
+    tmpfs: ["/tmp"]
+    env_file: [.env] # 시크릿 (chmod 600, git 제외 — 계획 01 §6.1)
+    environment:
+      - OMRA__RUNTIME__ROLE=app # SC-13 자격증명 배치 검사의 입력
+    volumes:
+      - ./config:/app/config:ro # 사람이 편집하는 입력물
+      - omra-db:/app/var/db # SQLite + 토큰 파일락 + restart_marks
+      - omra-data:/app/var/data # Parquet + RO 스냅샷 + 실험 결과 + KILL
+      - omra-logs:/app/var/logs # 운영 로그 + 감사로그
+      - omra-policy:/app/var/policy # 잡 산출 정책물 (targets/universe) — rw
+    ports:
+      # ★ Tailscale 인터페이스에만 바인딩한다 (계획 01 §7-1).
+      #   OMRA_BIND_ADDR 를 .env 에 두고 배포 시 실제 주소로 채운다.
+      - "${OMRA_BIND_ADDR:-127.0.0.1}:8080:8080"
+    healthcheck:
+      # ★ 관측 전용이다. unhealthy 는 재시작을 유발하지 않는다 —
+      #   재시작 유발은 봇 내부 워치독의 자발적 종료가 담당한다 (설계 01 §4.5·§7.4).
+      test: ["CMD", "python", "-m", "omra.cli", "health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging: # [DD-01-13] 컨테이너 stdout 상한 — 파일 로그와 별개
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── SQLite 실시간 복제 (RPO ≈ 초) ────────────────────────────────
+  litestream:
+    <<: *common
+    image: litestream/litestream:0.3
+    restart: unless-stopped
+    depends_on: [app]
+    command: replicate -config /etc/litestream.yml
+    # ★ .env 가 아니라 .env.litestream 만 읽는다 — 브로커 키를 복제 프로세스에
+    #   노출하지 않는다 (계획 01 §6.1·§6.5).
+    env_file: [.env.litestream]
+    volumes:
+      - omra-db:/app/var/db # 없으면 복제 대상 파일이 보이지 않는다
+      - ./config/litestream.yml:/etc/litestream.yml:ro
+
+  # ── 일회성 실행 전용 (백테스트·챌린저 G2·리서치 probe) ─────────────
+  tools:
+    <<: *common
+    build: .
+    image: "omra:${OMRA_TAG:-dev}"
+    profiles: ["tools"] # 기본 up 대상에서 제외 — 상시 기동 없음
+    tmpfs: ["/tmp"]
+    # ★ 브로커·Telegram·SMTP 자격증명이 없다. import-linter 는 프로세스를
+    #   넘지 못하므로, 같은 이미지·같은 키로 도는 별도 프로세스가 주문을 낼 수
+    #   있으면 계약이 프로세스 경계에서 무효화된다 (계획 01 §1.6).
+    env_file: [.env.tools]
+    environment:
+      - OMRA__RUNTIME__ROLE=tools # SC-13 이 자격증명 '부재'를 강제
+    volumes:
+      - ./config:/app/config:ro
+      - omra-data:/app/var/data # Parquet 읽기 + RO 스냅샷 읽기 + 결과 쓰기
+      - omra-logs:/app/var/logs
+      # ★ omra-db 를 마운트하지 않는다. WAL 리더의 조건부 실패를 피하고
+      #   단일 라이터 전제를 파일시스템 레벨에서 지킨다 — tools 는
+      #   `VACUUM INTO` 스냅샷만 읽는다 (계획 01 §1.6, 설계 01 §7.3).
+
+volumes:
+  omra-db: {}
+  omra-data: {}
+  omra-logs: {}
+  omra-policy: {}
