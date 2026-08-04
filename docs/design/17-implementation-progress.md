@@ -93,7 +93,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
 | 마일스톤 | 스테이지 | 단위 수 | 완료 | 진행률 | 상태 |
 |---|---|---:|---:|---:|---|
-| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 2 | 4% | ◐ |
+| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 3 | 6% | ◐ |
 | **M1** 데이터·브로커 read-only·감시 데이터층 | S09~S17 | 47 | 0 | 0% | ☐ |
 | **M2** 엔진·백테스트 | S18~S25 | 37 | 0 | 0% | ☐ |
 | **M3** dry-run 라이브 루프·감시 정책층 | S26~S32 | 43 | 0 | 0% | ☐ |
@@ -105,16 +105,16 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 | **M8** 목표기반·리포팅·계좌 자동화 | S49~S51 | 14 | 0 | 0% | ☐ |
 | **M10a** 자가 개선 — 지식 수집 | S52 | 7 | 0 | 0% | ☐ |
 | *(보류)* labs 챌린저층 | S53 | 6 | 0 | — | ⏸ |
-| **합계** | **53** | **307** | **2** | **0.7%** | |
+| **합계** | **53** | **307** | **3** | **1.0%** | |
 
 > **M0의 범위에 관한 주의**: 계획 04 §2 M0이 명시적으로 열거한 것은 저장소 구조·설정 계층·TR-ID 매핑·Docker·CI·감사 로거다. 여기에 `core`·`persistence`·`runtime`을 함께 넣은 근거는 **설계 03 §4.4가 "초기 리비전 = M0에서 §3 전 테이블 + 트리거 + 전 인덱스 생성"으로 확정**했고, 설계 01 §2.4가 "전 패키지는 M0부터 빈 패키지로라도 존재해야 한다"를 요구하며, 감사 로거가 `core.ids`(ULID)·`core.money`(KST 직렬화)에 의존하기 때문이다. 즉 M0는 **"M1이 착수 가능해지는 최소 기반"**이며 로드맵의 M0 열거를 줄이거나 늘린 것이 아니다.
 
 ### 2.2 현재 작업 위치
 
 ```
-▶ 현재 단위 : S01-3 (import-linter 계약 C01~C15 전량 등록)
-  직전 완료 : S01-2 (ruff·mypy 정적 게이트 구성)
-  다음 단위 : S01-4 (pytest 하네스·결정론 픽스처)
+▶ 현재 단위 : S01-4 (pytest 하네스·결정론 픽스처)
+  직전 완료 : S01-3 (import-linter 계약 C01~C15 전량 등록)
+  다음 단위 : S01-5 (Docker 3서비스 토폴로지)
 ```
 
 ---
@@ -153,11 +153,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 |---|---|---|---|---|:--:|---|
 | **S01-1** | 저장소 스캐폴드·패키지 배치 | `pyproject.toml`(프로젝트·의존성·pytest 최소 부트스트랩), `uv.lock`, `.gitignore`, `README.md`, `src/omra/**/__init__.py`(45개), `tests/arch/test_scaffold.py` | `uv sync` 성공 · `import omra` 성공 · 1차 패키지 24종 + 하위 패키지 20종이 **정확히** 설계 01 §2.1 트리와 일치(누락·초과 양방향 단정) · 전 패키지가 소유 설계서를 docstring에 명시 · 최상위 잡 모듈 0건 · **90 passed** | 01 §2.1·§2.3·§2.4, 계획 01 §1.5·§2 | ☑ | `feat: 저장소 스캐폴드와 패키지 골격 구성` |
 | **S01-2** | ruff·mypy 정적 게이트 구성 | `pyproject.toml`(`[tool.ruff]`·`[tool.mypy]`), `tests/arch/test_static_gates.py` | `ruff check .`·`ruff format --check .`·`mypy` green · strict 섬 15개 모듈이 16 §3.1 표와 집합 일치(V16-07) · banned-api 4종 등록 + **위반 픽스처로 TID251 실차단 실증**(V16-06) · `disallow_any_explicit`·`disallow_any_unimported` 확인 · **마크다운을 ruff 대상에서 제외**(설계서 코드 펜스가 포매터에 재작성되는 것을 차단) · **98 passed** | 16 §3.1 [DD-16-2]·§3.3 [DD-16-3]·§3.4 | ☑ | `build: ruff·mypy 정적 게이트 구성` |
-| **S01-3** | import-linter 계약 C01~C15 전량 등록 | `pyproject.toml`(`[tool.importlinter]`) | `lint-imports` green · 계약 15종 등록 · `allow_indirect_imports` 필요 여부 실측 후 반영 · 위반 커밋 실차단 확인(AT-7) | 01 §8.2 [DD-01-7·8·15], 계획 01 §2.2 | ☐ | |
+| **S01-3** | import-linter 계약 C01~C15 전량 등록 | `pyproject.toml`(`[tool.importlinter]`), `src/omra/**` 스텁 33종(engine 4·brokers 2·surveillance 3·data 3·persistence 2·repos 25), `tests/arch/test_at_contract_sync.py` | **계약 19종 KEPT, 0 broken** · 계약이 참조하는 전 모듈 실재(01 §2.4) · `allow_indirect_imports`를 C04b·C05b·C07b에 적용(정당한 체인 오탐 방지 — 01 §11-1 실측 결과) · **AT-1 양방향 대조**(repos 파일 집합 ↔ 금지 열거) · **AT-7 실차단 12건 실증**(C03·C04a·C05a·C06a·C07a·C08·C09·C11~C15) · **128 passed** | 01 §8.1.1 [DD-01-7]·§8.2 [DD-01-8·15]·§8.3·§2.4, 계획 01 §2.2 | ☑ | `feat: import-linter 의존 방향 계약 전량 등록` |
 | **S01-4** | pytest 하네스·결정론 픽스처 | `pyproject.toml`(`[tool.pytest.ini_options]`), `tests/conftest.py`, `tests/marks.py`, `tests/factories.py`, `tests/property/strategies.py` | 마커 없는 테스트 0건 단정(V16-02) · 디렉터리↔마커 불일치가 수집 단계 실패(V16-01) · network kill 픽스처가 소켓 차단 · hypothesis 프로파일 3종(`dev`/`ci`/`nightly`) 등록 | 16 §2.1 [DD-16-1]·§2.3·§4.3·§11.2 | ☐ | |
 | **S01-5** | Docker 3서비스 토폴로지 | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `config/litestream.yml`, `.env.example`, `.env.litestream.example`, `.env.tools.example` | `docker compose config` 통과 · tools에 `omra-db` 볼륨 미마운트를 compose 스냅샷 테스트로 고정 · litestream이 `.env`가 아닌 `.env.litestream`만 로드함을 단정 · `read_only: true`·non-root(1000:1000)·`stop_grace_period: 40s` 반영 | 01 §7.1~§7.3 [DD-01-5·10·12·13], 계획 01 §1.6·§6.5 | ☐ | |
 | **S01-6** | GitHub Actions CI 골격 (J1~J4·J10) | `.github/workflows/ci.yml` | PR에서 J1(lint)·J2(typecheck)·J3(arch)·J4(unit+property)·J10(supply-chain) green · 워크플로에 브로커 자격증명 참조 0건(V16-29) · `uv sync --frozen`으로 lockfile 고정 | 16 §10.1~§10.3 [DD-16-9], 계획 01 §7-7 | ☐ | |
-| **S01-7** | 아키텍처 테스트 기반 (AST 유틸·AT-1) | `tests/arch/astutil.py`, `tests/arch/test_at_contract_sync.py` | AT-1이 `persistence/repos/*.py` 파일 집합 ↔ C04b·C05b·C07b 금지 열거를 **양방향** 대조 · 한쪽에만 있으면 실패 실증 2건 | 01 §8.1.1 [DD-01-7]·§8.3, 16 §6.1 | ☐ | |
+| **S01-7** | 아키텍처 테스트 AST 유틸 | `tests/arch/astutil.py` | AST 스캐너 공용 유틸(모듈 순회·import 추출·시그니처 추출) — AT-8~AT-17의 공통 기반. **AT-1·AT-7은 S01-3에서 선행 완료** | 16 §6.1·§6.3 | ☐ | |
 
 ### S02 — `core/` 기반 4종 (L0~L1 계층)
 

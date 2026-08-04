@@ -169,6 +169,315 @@ ignore_missing_imports = true
 
 # ══════════════════════════════════════════════════════════════════════
 # 이하 도구 설정은 후속 구현 단위에서 채운다:
-#   S01-3  [tool.importlinter]              (정본: 01 §8.2)
 #   S01-4  [tool.pytest.ini_options] 확장   (정본: 16 §2.1·§2.3·§4.3)
 # ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+# import-linter — 정본: 설계 01 §8.2 (계획 01 §2.2가 유일 원문)
+#
+# 계약은 두 층으로 나뉜다.
+#   ① 기계 강제(이 파일) — `[forbidden]` 계약. **열거되지 않은 간선의 기본값은 허용**이다.
+#   ② 쓰기 권한 강제(패키지 분할) — 쓰기는 `persistence.repos.*` 로만. "RO"는
+#      주석이 아니라 import 가능한 모듈 집합이다.
+#
+# C01~C07b·C10·C11 은 계획 01 §2.2 원문의 1:1 기계 번역이다. 차이가 발견되면
+# 계획이 이기고 이 파일을 고친다.
+# C08·C09·C12~C15 는 각 소유 설계서가 자기부과한 추가 봉인이며(01 [DD-01-15]),
+# 계획이 default-allow로 남긴 간선을 좁히기만 한다. 간선을 넓혀야 하면 계약이
+# 아니라 요청 문서의 DD를 먼저 고친다.
+#
+# repos 모듈명의 정본은 설계 03 §2.1 트리다(24종). 03이 모듈을 추가·개명하면
+# **같은 커밋에서** C04b·C05b·C07b 열거를 갱신해야 하며, 미갱신은 AT-1이 차단한다.
+# ══════════════════════════════════════════════════════════════════════
+[tool.importlinter]
+root_packages = ["omra"]
+
+# ── 코어 방향 규율 (계획 01 §2.2) ─────────────────────────────────────
+[[tool.importlinter.contracts]]
+name = "C01 engine은 brokers를 모른다"
+type = "forbidden"
+source_modules = ["omra.engine"]
+forbidden_modules = ["omra.brokers"]
+
+[[tool.importlinter.contracts]]
+name = "C02 brokers는 전략을 모른다 [DD-01-8]"
+type = "forbidden"
+source_modules = ["omra.brokers"]
+forbidden_modules = [
+  "omra.engine", "omra.execution", "omra.tax", "omra.protections",
+  "omra.portfolio", "omra.data", "omra.collectors",
+  "omra.surveillance", "omra.realtime", "omra.research", "omra.labs",
+  "omra.backtest", "omra.scheduler", "omra.rpc", "omra.web",
+  "omra.monitoring", "omra.runtime", "omra.cli",
+]
+
+# ── collectors — 중립 프레임워크: core·audit 외 전부 금지 (계획 01 §2.2) ──
+[[tool.importlinter.contracts]]
+name = "C03 collectors는 core·audit만 안다"
+type = "forbidden"
+source_modules = ["omra.collectors"]
+forbidden_modules = [
+  "omra.brokers", "omra.config", "omra.calendar", "omra.data",
+  "omra.engine", "omra.tax", "omra.execution", "omra.protections",
+  "omra.portfolio", "omra.persistence", "omra.scheduler", "omra.rpc",
+  "omra.web", "omra.research", "omra.labs", "omra.backtest",
+  "omra.monitoring", "omra.surveillance", "omra.realtime", "omra.runtime",
+  "omra.cli",
+]
+
+# ── research — LLM 격리 (계획 01 §2.2) ────────────────────────────────
+[[tool.importlinter.contracts]]
+name = "C04a research 기능 격리"
+type = "forbidden"
+source_modules = ["omra.research"]
+forbidden_modules = [
+  "omra.execution", "omra.brokers", "omra.engine", "omra.tax",
+  "omra.surveillance",                       # prompt injection 격리
+  "omra.protections", "omra.scheduler", "omra.web", "omra.rpc",
+  "omra.backtest", "omra.labs", "omra.realtime", "omra.portfolio",
+  "omra.calendar", "omra.monitoring", "omra.runtime", "omra.cli",
+]
+
+[[tool.importlinter.contracts]]
+name = "C04b research 쓰기 화이트리스트 = repos.research_extractions 뿐"
+type = "forbidden"
+allow_indirect_imports = true   # 정당한 체인(research → repos.x → session)의 오탐 방지
+# 열거 = 설계 03 §2.1 repos 트리 전체(24) − {research_extractions}. AT-1이 양방향 대조한다.
+source_modules = ["omra.research"]
+forbidden_modules = [
+  "omra.persistence.session",                # rw 세션 금지 (§8.1 초크포인트)
+  "omra.persistence.repos.approvals",
+  "omra.persistence.repos.budget",
+  "omra.persistence.repos.decomposition",
+  "omra.persistence.repos.execution_state",
+  "omra.persistence.repos.experiments",
+  "omra.persistence.repos.fills",
+  "omra.persistence.repos.holidays",
+  "omra.persistence.repos.nav_snapshots",
+  "omra.persistence.repos.notifications",
+  "omra.persistence.repos.orders",
+  "omra.persistence.repos.pending_tax_events",
+  "omra.persistence.repos.pending_transfers",
+  "omra.persistence.repos.plans",
+  "omra.persistence.repos.policy_versions",
+  "omra.persistence.repos.positions",
+  "omra.persistence.repos.protections",
+  "omra.persistence.repos.reconcile",
+  "omra.persistence.repos.run_ledger",
+  "omra.persistence.repos.satellite",
+  "omra.persistence.repos.state",
+  "omra.persistence.repos.surveillance_flags",
+  "omra.persistence.repos.tax_events",
+  "omra.persistence.repos.tokens",
+]
+
+# ── surveillance — 감시는 주문하지 않는다 (계획 01 §2.2) ───────────────
+[[tool.importlinter.contracts]]
+name = "C05a surveillance 기능 격리"
+type = "forbidden"
+source_modules = ["omra.surveillance"]
+forbidden_modules = [
+  "omra.research",                            # prompt injection 격리
+  "omra.execution",
+  "omra.brokers.kis.client", "omra.brokers.upbit.client",
+  "omra.engine",                              # 계획 04 §2 M1이 engine 전체로 확정
+  "omra.tax",
+  "omra.rpc", "omra.web", "omra.labs", "omra.backtest",
+  "omra.protections", "omra.scheduler", "omra.runtime",
+  "omra.realtime",                            # 허용 방향은 realtime → surveillance.gate 뿐
+  "omra.portfolio", "omra.monitoring", "omra.calendar", "omra.cli",
+]
+
+[[tool.importlinter.contracts]]
+name = "C05b surveillance 쓰기 화이트리스트 = flags·pending_tax_events 뿐"
+type = "forbidden"
+allow_indirect_imports = true
+# 열거 = 설계 03 §2.1 repos 트리 전체(24) − {surveillance_flags, pending_tax_events}
+source_modules = ["omra.surveillance"]
+forbidden_modules = [
+  "omra.persistence.session",
+  "omra.persistence.repos.approvals",
+  "omra.persistence.repos.budget",
+  "omra.persistence.repos.decomposition",
+  "omra.persistence.repos.execution_state",
+  "omra.persistence.repos.experiments",
+  "omra.persistence.repos.fills",
+  "omra.persistence.repos.holidays",
+  "omra.persistence.repos.nav_snapshots",
+  "omra.persistence.repos.notifications",
+  "omra.persistence.repos.orders",
+  # ★ pending_transfers 금지는 E7 불변식 1(계획 02 §5.6)의 기계화다 —
+  #   감시는 이전 지시를 만들지 않는다.
+  "omra.persistence.repos.pending_transfers",
+  "omra.persistence.repos.plans",
+  "omra.persistence.repos.policy_versions",
+  "omra.persistence.repos.positions",
+  "omra.persistence.repos.protections",
+  "omra.persistence.repos.reconcile",
+  "omra.persistence.repos.research_extractions",
+  "omra.persistence.repos.run_ledger",
+  "omra.persistence.repos.satellite",
+  "omra.persistence.repos.state",
+  "omra.persistence.repos.tax_events",
+  "omra.persistence.repos.tokens",
+]
+
+# ── realtime — 축소 방향 전용 (계획 01 §2.2) ──────────────────────────
+[[tool.importlinter.contracts]]
+name = "C06a realtime 기능 격리 — 스스로 주문·조회하지 않는다"
+type = "forbidden"
+source_modules = ["omra.realtime"]
+forbidden_modules = [
+  "omra.execution",
+  "omra.brokers.kis.client", "omra.brokers.upbit.client",
+  "omra.engine",
+  "omra.tax",
+  "omra.research", "omra.labs", "omra.backtest", "omra.rpc",
+  "omra.web", "omra.scheduler", "omra.protections", "omra.portfolio",
+  "omra.collectors", "omra.monitoring", "omra.runtime",
+  "omra.calendar", "omra.cli",
+  # ★ 계획 01 §2.2의 realtime 허용은 **서브모듈 단위**다(`surveillance.gate`·`data.quote`).
+  #   패키지 전체를 허용으로 두면 default-allow가 나머지 서브모듈을 조용히 열어 준다 —
+  #   `surveillance.flags`는 C06b(상태 쓰기 금지) 우회 경로가 되고,
+  #   `data.providers`는 "data.quote가 realtime의 유일한 REST 경로"를 무효화한다.
+  "omra.surveillance.flags", "omra.surveillance.sources",
+  "omra.surveillance.catalog", "omra.surveillance.models",
+  "omra.data.providers", "omra.data.store", "omra.data.fetcher",
+]
+
+[[tool.importlinter.contracts]]
+name = "C06b realtime은 어떤 상태도 쓰지 않는다 — persistence 전체 금지"
+type = "forbidden"
+source_modules = ["omra.realtime"]
+forbidden_modules = ["omra.persistence"]      # ro 포함 — 허용 목록에 ro가 없다
+
+# ── labs — 실험은 주문을 낼 수 없다 (계획 01 §2.2) ────────────────────
+[[tool.importlinter.contracts]]
+name = "C07a labs 기능 격리"
+type = "forbidden"
+source_modules = ["omra.labs"]
+forbidden_modules = [
+  "omra.execution", "omra.brokers", "omra.rpc", "omra.research",
+  "omra.collectors",                          # labs는 수집하지 않는다
+  "omra.surveillance", "omra.realtime", "omra.tax",
+  "omra.web", "omra.scheduler", "omra.calendar", "omra.monitoring",
+  "omra.runtime", "omra.portfolio", "omra.cli",
+]
+
+[[tool.importlinter.contracts]]
+name = "C07b labs 쓰기 화이트리스트 = experiments·budget 뿐"
+type = "forbidden"
+allow_indirect_imports = true
+# 열거 = 설계 03 §2.1 repos 트리 전체(24) − {experiments, budget}
+source_modules = ["omra.labs"]
+forbidden_modules = [
+  "omra.persistence.session",
+  "omra.persistence.repos.approvals",
+  "omra.persistence.repos.decomposition",
+  "omra.persistence.repos.execution_state",
+  "omra.persistence.repos.fills",
+  "omra.persistence.repos.holidays",
+  "omra.persistence.repos.nav_snapshots",
+  "omra.persistence.repos.notifications",
+  "omra.persistence.repos.orders",
+  "omra.persistence.repos.pending_tax_events",
+  "omra.persistence.repos.pending_transfers",
+  "omra.persistence.repos.plans",
+  "omra.persistence.repos.policy_versions",
+  "omra.persistence.repos.positions",
+  "omra.persistence.repos.protections",
+  "omra.persistence.repos.reconcile",
+  "omra.persistence.repos.research_extractions",
+  "omra.persistence.repos.run_ledger",
+  "omra.persistence.repos.satellite",
+  "omra.persistence.repos.state",
+  "omra.persistence.repos.surveillance_flags",
+  "omra.persistence.repos.tax_events",
+  "omra.persistence.repos.tokens",
+]
+
+# ── data — 공급 계층은 판단 계층을 모른다 [DD-01-15] (요청: 06 [DD-06-1]) ──
+[[tool.importlinter.contracts]]
+name = "C08 data는 판단 계층을 import하지 않는다"
+type = "forbidden"
+source_modules = ["omra.data"]
+forbidden_modules = [
+  "omra.engine", "omra.execution", "omra.protections", "omra.realtime",
+  "omra.surveillance", "omra.labs", "omra.research",
+]
+
+# ── protections — 차단 판정기는 주문 생성기를 부르지 않는다 [DD-01-15] (요청: 09 [DD-09-2]) ──
+[[tool.importlinter.contracts]]
+name = "C09 protections는 집행·목표산출을 import하지 않는다"
+type = "forbidden"
+source_modules = ["omra.protections"]
+forbidden_modules = [
+  "omra.execution",
+  "omra.brokers.kis.client", "omra.brokers.upbit.client",
+  "omra.engine.optimizer", "omra.engine.rebalancer",
+]
+# 허용은 그대로다: protections → surveillance.gate · tax · calendar
+#                   · persistence.ro · persistence.repos.{state,protections}
+
+# ── Σ_monitor 분리 (정본: 계획 02 §3.2 "optimizer에서 import 불가") ────
+[[tool.importlinter.contracts]]
+name = "C10 Σ_monitor는 목표비중 산출에 닿지 않는다 [DD-01-9]"
+type = "forbidden"
+source_modules = ["omra.engine.optimizer", "omra.engine.rebalancer",
+                  "omra.engine.expected_returns"]
+forbidden_modules = ["omra.engine.covariance_monitor"]
+
+# ── composition root 격리 [DD-01-1] ──────────────────────────────────
+[[tool.importlinter.contracts]]
+name = "C11 runtime은 엔트리포인트 전용"
+type = "forbidden"
+source_modules = [
+  "omra.core", "omra.config", "omra.calendar", "omra.brokers",
+  "omra.collectors", "omra.surveillance", "omra.realtime", "omra.data",
+  "omra.engine", "omra.tax", "omra.execution", "omra.protections",
+  "omra.portfolio", "omra.persistence", "omra.scheduler", "omra.rpc",
+  "omra.web", "omra.research", "omra.labs", "omra.backtest",
+  "omra.audit", "omra.monitoring",
+]
+forbidden_modules = ["omra.runtime"]
+
+# ── web·rpc — 웹에 주문 경로를 만들지 않는다 [DD-01-15] (요청: 13 [DD-13-2]) ──
+[[tool.importlinter.contracts]]
+name = "C12 web은 주문·평가 계층을 import하지 않는다"
+type = "forbidden"
+source_modules = ["omra.web"]
+forbidden_modules = [
+  "omra.execution", "omra.brokers", "omra.engine", "omra.tax", "omra.protections",
+]
+# 웹의 쓰기 경로는 omra.rpc.commands 하나뿐이고 읽기는 persistence.ro다 (13 §2.4).
+# 이 계약이 하드 규칙 "'지금 매매' 버튼을 만들지 않는다"(13 §9.1)의 강제 수단이다.
+
+[[tool.importlinter.contracts]]
+name = "C13 rpc → web 단방향 고정"
+type = "forbidden"
+source_modules = ["omra.rpc"]
+forbidden_modules = ["omra.web"]
+
+# ── backtest — tools 프로세스 격리의 코드 레벨 절반 [DD-01-15] (요청: 15 [DD-15-16]) ──
+[[tool.importlinter.contracts]]
+name = "C14 backtest는 브로커·집행·운영 계층을 import하지 않는다"
+type = "forbidden"
+source_modules = ["omra.backtest"]
+forbidden_modules = [
+  "omra.brokers", "omra.execution", "omra.rpc", "omra.web",
+  "omra.scheduler", "omra.realtime",     # omra.runtime은 C11이 이미 봉인
+]
+
+# ── tax 자기 제한 [DD-01-15] (요청: 10 [DD-10-2]) ─────────────────────
+[[tool.importlinter.contracts]]
+name = "C15 tax 자기 제한 — 허용은 core·config·calendar·data·audit·persistence(ro+자기 repo)"
+type = "forbidden"
+source_modules = ["omra.tax"]
+forbidden_modules = [
+  "omra.execution", "omra.brokers", "omra.engine", "omra.protections",
+  "omra.portfolio", "omra.collectors", "omra.surveillance", "omra.realtime",
+  "omra.research", "omra.labs", "omra.backtest", "omra.scheduler",
+  "omra.rpc", "omra.web", "omra.monitoring", "omra.runtime", "omra.cli",
+]
+# 소비 방향(execution·protections → tax)은 계획 01 §2.2 허용 그대로다 —
+# 산출물은 execution이 '가져간다'(10 §2.1).
+
