@@ -89,9 +89,7 @@ def test_first_level_packages_exist_exactly() -> None:
     누락은 import-linter 계약이 존재하지 않는 모듈을 참조하게 만들고,
     초과는 아키텍처 변경이 문서 없이 일어났다는 뜻이다.
     """
-    found = {
-        m.name for m in pkgutil.iter_modules([str(_package_root())]) if m.ispkg
-    }
+    found = {m.name for m in pkgutil.iter_modules([str(_package_root())]) if m.ispkg}
     assert found == FIRST_LEVEL_PACKAGES, (
         f"누락: {sorted(FIRST_LEVEL_PACKAGES - found)} / "
         f"초과: {sorted(found - FIRST_LEVEL_PACKAGES)}"
@@ -125,9 +123,5 @@ def test_no_stray_top_level_modules() -> None:
     M0 시점에 허용되는 최상위 모듈은 없다 — `__main__.py` 는 S07-1에서 추가된다.
     """
     allowed = {"__init__.py", "__main__.py", "py.typed"}
-    stray = sorted(
-        p.name
-        for p in _package_root().glob("*.py")
-        if p.name not in allowed
-    )
+    stray = sorted(p.name for p in _package_root().glob("*.py") if p.name not in allowed)
     assert stray == [], f"설계 01 §2.1 트리에 없는 최상위 모듈: {stray}"
