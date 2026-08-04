@@ -80,6 +80,11 @@ packages = ["src/omra"]
 # 실행 가능한 최소 설정만 둔다.
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `tests.marks` 같은 헬퍼를 절대 import 경로로 쓰기 위해 저장소 루트를 넣는다.
+pythonpath = ["."]
+addopts = "--strict-markers"
+asyncio_mode = "auto"
+filterwarnings = ["error::DeprecationWarning:omra.*"]
 markers = [
     "unit: L1 — 순수 함수·단일 클래스",
     "property: L2 — hypothesis 불변식",
@@ -91,6 +96,7 @@ markers = [
     "record: 보조 — 카세트 녹화(실호출). CI 미실행",
     "gate_evidence: 보조 — 마일스톤 게이트 증빙 수집",
     "m9: 조건부 — T1 실시간 계층",
+    "verifies(*ids): 설계서 검증 항목 ID 결선 (16 §2.3)",
 ]
 
 # ══════════════════════════════════════════════════════════════════════
