@@ -93,7 +93,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
 | 마일스톤 | 스테이지 | 단위 수 | 완료 | 진행률 | 상태 |
 |---|---|---:|---:|---:|---|
-| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 5 | 9% | ◐ |
+| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 6 | 11% | ◐ |
 | **M1** 데이터·브로커 read-only·감시 데이터층 | S09~S17 | 47 | 0 | 0% | ☐ |
 | **M2** 엔진·백테스트 | S18~S25 | 37 | 0 | 0% | ☐ |
 | **M3** dry-run 라이브 루프·감시 정책층 | S26~S32 | 43 | 0 | 0% | ☐ |
@@ -105,16 +105,16 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 | **M8** 목표기반·리포팅·계좌 자동화 | S49~S51 | 14 | 0 | 0% | ☐ |
 | **M10a** 자가 개선 — 지식 수집 | S52 | 7 | 0 | 0% | ☐ |
 | *(보류)* labs 챌린저층 | S53 | 6 | 0 | — | ⏸ |
-| **합계** | **53** | **307** | **5** | **1.6%** | |
+| **합계** | **53** | **307** | **6** | **2.0%** | |
 
 > **M0의 범위에 관한 주의**: 계획 04 §2 M0이 명시적으로 열거한 것은 저장소 구조·설정 계층·TR-ID 매핑·Docker·CI·감사 로거다. 여기에 `core`·`persistence`·`runtime`을 함께 넣은 근거는 **설계 03 §4.4가 "초기 리비전 = M0에서 §3 전 테이블 + 트리거 + 전 인덱스 생성"으로 확정**했고, 설계 01 §2.4가 "전 패키지는 M0부터 빈 패키지로라도 존재해야 한다"를 요구하며, 감사 로거가 `core.ids`(ULID)·`core.money`(KST 직렬화)에 의존하기 때문이다. 즉 M0는 **"M1이 착수 가능해지는 최소 기반"**이며 로드맵의 M0 열거를 줄이거나 늘린 것이 아니다.
 
 ### 2.2 현재 작업 위치
 
 ```
-▶ 현재 단위 : S01-6 (GitHub Actions CI 골격 J1~J4·J10)
-  직전 완료 : S01-5 (Docker 3서비스 토폴로지)
-  다음 단위 : S01-7 (아키텍처 테스트 AST 유틸)
+▶ 현재 단위 : S01-7 (아키텍처 테스트 AST 유틸)
+  직전 완료 : S01-6 (GitHub Actions CI 골격 J1~J4·J10)
+  다음 단위 : S02-1 (예외 계층 core.errors)
 ```
 
 ---
@@ -156,7 +156,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 | **S01-3** | import-linter 계약 C01~C15 전량 등록 | `pyproject.toml`(`[tool.importlinter]`), `src/omra/**` 스텁 33종(engine 4·brokers 2·surveillance 3·data 3·persistence 2·repos 25), `tests/arch/test_at_contract_sync.py` | **계약 19종 KEPT, 0 broken** · 계약이 참조하는 전 모듈 실재(01 §2.4) · `allow_indirect_imports`를 C04b·C05b·C07b에 적용(정당한 체인 오탐 방지 — 01 §11-1 실측 결과) · **AT-1 양방향 대조**(repos 파일 집합 ↔ 금지 열거) · **AT-7 실차단 12건 실증**(C03·C04a·C05a·C06a·C07a·C08·C09·C11~C15) · **128 passed** | 01 §8.1.1 [DD-01-7]·§8.2 [DD-01-8·15]·§8.3·§2.4, 계획 01 §2.2 | ☑ | `feat: import-linter 의존 방향 계약 전량 등록` |
 | **S01-4** | pytest 하네스·결정론 픽스처 | `pyproject.toml`(`[tool.pytest.ini_options]`), `tests/conftest.py`, `tests/marks.py`, `tests/unit/test_harness.py`, `tests/**/__init__.py` | **마커 없는 테스트 0건**을 수집 후 집계로 단정(V16-02) · **디렉터리↔마커 불일치가 수집 단계 실패**(V16-01, 위반 픽스처로 실증) · 소켓 차단 + `allow_socket`는 `record`와만 조합(V16-03) · 시드 = 노드 ID blake2b 해시(순서·병렬화 무관 재현) · hypothesis 3종(`dev`/`ci` derandomize/`nightly`) · `--golden-update`가 CI에서 거부됨 · `verifies()` ID 형식 검증 · **139 passed** | 16 §2.1 [DD-16-1]·§2.3·§4.3·§11.1~§11.4 [DD-16-11] | ☑ | `test: pytest 하네스와 결정론 픽스처 구성` |
 | **S01-5** | Docker 3서비스 토폴로지 | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `config/litestream.yml`, `.env{,.litestream,.tools}.example`, `tests/arch/test_compose_topology.py` | **토폴로지 불변식 19종 스냅샷 테스트** — tools에 `omra-db` 미마운트 / litestream이 `.env.litestream`만 로드 / tools에 브로커 자격증명 부재 / 세 서비스 non-root·read_only / docker.sock 미마운트 / 배제 스택 부재 / `stop_grace_period: 40s`·`init: true` / config `:ro` / 볼륨 4종 / `latest` 태그 금지 / stdout 로테이션 50m×3 / `.env.example`에 실값 0건 · **158 passed** · `docker compose config`는 CI(J1)에서 검증 | 01 §7.1~§7.5 [DD-01-5·10·13], 계획 01 §1.6·§6.1·§6.5·§7-6 | ☑ | `build: Docker 3서비스 배포 토폴로지 구성` |
-| **S01-6** | GitHub Actions CI 골격 (J1~J4·J10) | `.github/workflows/ci.yml` | PR에서 J1(lint)·J2(typecheck)·J3(arch)·J4(unit+property)·J10(supply-chain) green · 워크플로에 브로커 자격증명 참조 0건(V16-29) · `uv sync --frozen`으로 lockfile 고정 | 16 §10.1~§10.3 [DD-16-9], 계획 01 §7-7 | ☐ | |
+| **S01-6** | GitHub Actions CI 골격 (J1~J4·J10) | `.github/workflows/ci.yml`, `tests/arch/test_ci_workflow.py` | J1(ruff check+format+`docker compose config`)·J2(mypy)·J3(lint-imports+`-m arch`)·J4(`-m "unit or property"`, J1~J3 선행)·J10(`uv lock --check`+pip-audit) 등록 · **브로커 자격증명·`OMRA_TEST_LIVE`·`secrets.` 참조 0건**을 파싱 트리 스캔으로 단정(V16-29) · `UV_FROZEN=1`·`HYPOTHESIS_PROFILE=ci`(derandomize)·`OMRA_TEST_NETWORK=blocked` · 전 잡 타임아웃 · **미활성 J5~J9·J11의 활성화 시점 문서화 단정** · **176 passed** | 16 §10.1~§10.3 [DD-16-9]·§1.3, 계획 01 §7-7 | ☑ | `ci: GitHub Actions 파이프라인 J1~J4·J10 구성` |
 | **S01-7** | 아키텍처 테스트 AST 유틸 | `tests/arch/astutil.py` | AST 스캐너 공용 유틸(모듈 순회·import 추출·시그니처 추출) — AT-8~AT-17의 공통 기반. **AT-1·AT-7은 S01-3에서 선행 완료** | 16 §6.1·§6.3 | ☐ | |
 
 ### S02 — `core/` 기반 4종 (L0~L1 계층)
