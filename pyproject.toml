@@ -125,6 +125,11 @@ select = ["E","F","W","I","N","UP","B","A","C4","DTZ","T20","PT","RET","SIM",
 ignore = ["PLR0913",   # 인자 수 — 도메인 팩토리·시그니처가 길다
           "S101"]      # assert — tests에서만 쓰고 src는 AT-10이 별도로 막는다
 
+# 설계서가 쓰는 조판 문자를 코드 주석에서도 그대로 쓴다. 설계서와 코드가 같은
+# 표기를 써야 "이 줄의 근거가 저 절"이라는 대조가 검색으로 성립한다.
+# 전각 숫자(１２３)는 여기 넣지 않는다 — 그것은 진짜 의심스러운 입력이다.
+allowed-confusables = ["×", "−", "≤", "≥", "·", "→", "’"]
+
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "datetime.datetime.now".msg = "core.Clock을 주입해 쓴다 (설계 02 §8.1 DD-02-11)"
 "datetime.date.today".msg   = "core.Clock을 주입해 쓴다 (설계 02 §8.1 DD-02-11)"
