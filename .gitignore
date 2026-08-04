@@ -1,0 +1,29 @@
+# ── 시크릿 — 절대 커밋하지 않는다 (계획 01 §6.1, chmod 600) ──────────
+.env
+.env.*
+!.env.example
+!.env.litestream.example
+!.env.tools.example
+
+# ── 런타임 산출물 — config/ 입력물과 분리 (계획 01 §6.1) ─────────────
+/var/
+
+# ── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# ── 도구 캐시 ────────────────────────────────────────────────────────
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ── OS ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

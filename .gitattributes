@@ -1,0 +1,11 @@
+# 저장소 내부 표기는 LF로 정규화한다. 체크아웃 시 OS 관례를 따르지 않는 이유는
+# 해시 기반 판정(config fingerprint·스냅샷 회귀·카세트 매칭)이 줄바꿈 차이로
+# 깨지는 것을 막기 위함이다.
+* text=auto eol=lf
+
+# 바이너리 — 변환 금지
+*.zip   binary
+*.png   binary
+*.parquet binary
+*.sqlite  binary
+uv.lock text eol=lf

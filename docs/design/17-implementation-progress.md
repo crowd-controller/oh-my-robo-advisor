@@ -37,7 +37,9 @@
      mypy
      lint-imports
      pytest -m "unit or property or arch"          # 해당 단위가 건드린 계층까지
-3. 이 문서의 해당 단위 상태를 ☐ → ☑ 로 갱신하고 "커밋" 열에 커밋 해시를 적는다
+3. 이 문서의 해당 단위 상태를 ☐ → ☑ 로 갱신하고 "커밋" 열에 커밋 제목을 적는다
+     (해시가 아니라 제목인 이유: 진행 문서와 코드가 같은 커밋에 들어가므로
+      해시는 커밋 시점에 알 수 없다)
      §2.1 진행 요약표의 완료 수치도 함께 갱신한다
 4. 코드 + 이 문서를 **하나의 커밋**으로 묶어 커밋 → push
      (진행 문서를 별도 커밋으로 분리하지 않는다 — 어느 커밋이 무엇을 완성했는지가 흐려진다)
@@ -91,7 +93,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
 | 마일스톤 | 스테이지 | 단위 수 | 완료 | 진행률 | 상태 |
 |---|---|---:|---:|---:|---|
-| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 0 | 0% | ☐ |
+| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 1 | 2% | ◐ |
 | **M1** 데이터·브로커 read-only·감시 데이터층 | S09~S17 | 47 | 0 | 0% | ☐ |
 | **M2** 엔진·백테스트 | S18~S25 | 37 | 0 | 0% | ☐ |
 | **M3** dry-run 라이브 루프·감시 정책층 | S26~S32 | 43 | 0 | 0% | ☐ |
@@ -103,16 +105,16 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 | **M8** 목표기반·리포팅·계좌 자동화 | S49~S51 | 14 | 0 | 0% | ☐ |
 | **M10a** 자가 개선 — 지식 수집 | S52 | 7 | 0 | 0% | ☐ |
 | *(보류)* labs 챌린저층 | S53 | 6 | 0 | — | ⏸ |
-| **합계** | **53** | **307** | **0** | **0%** | |
+| **합계** | **53** | **307** | **1** | **0.3%** | |
 
 > **M0의 범위에 관한 주의**: 계획 04 §2 M0이 명시적으로 열거한 것은 저장소 구조·설정 계층·TR-ID 매핑·Docker·CI·감사 로거다. 여기에 `core`·`persistence`·`runtime`을 함께 넣은 근거는 **설계 03 §4.4가 "초기 리비전 = M0에서 §3 전 테이블 + 트리거 + 전 인덱스 생성"으로 확정**했고, 설계 01 §2.4가 "전 패키지는 M0부터 빈 패키지로라도 존재해야 한다"를 요구하며, 감사 로거가 `core.ids`(ULID)·`core.money`(KST 직렬화)에 의존하기 때문이다. 즉 M0는 **"M1이 착수 가능해지는 최소 기반"**이며 로드맵의 M0 열거를 줄이거나 늘린 것이 아니다.
 
 ### 2.2 현재 작업 위치
 
 ```
-▶ 현재 단위 : S01-1 (저장소 스캐폴드·패키지 배치)
-  직전 완료 : 없음
-  다음 단위 : S01-2 (ruff·mypy 정적 게이트 구성)
+▶ 현재 단위 : S01-2 (ruff·mypy 정적 게이트 구성)
+  직전 완료 : S01-1 (저장소 스캐폴드·패키지 배치)
+  다음 단위 : S01-3 (import-linter 계약 C01~C15 전량 등록)
 ```
 
 ---
@@ -149,7 +151,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
 | 단위 | 제목 | 산출 파일 | 완료 판정(DoD) | 근거 | 상태 | 커밋 |
 |---|---|---|---|---|:--:|---|
-| **S01-1** | 저장소 스캐폴드·패키지 배치 | `pyproject.toml`(프로젝트·의존성), `uv.lock`, `src/omra/__init__.py`, 24개 하위 패키지 `__init__.py`, `.gitignore` | `uv sync --frozen` 성공 · `import omra` 성공 · 01 §2.1 트리의 전 패키지 존재를 대조하는 스캐폴드 테스트 통과 | 01 §2.1·§2.3, 계획 01 §1.5·§2 | ☐ | |
+| **S01-1** | 저장소 스캐폴드·패키지 배치 | `pyproject.toml`(프로젝트·의존성·pytest 최소 부트스트랩), `uv.lock`, `.gitignore`, `README.md`, `src/omra/**/__init__.py`(45개), `tests/arch/test_scaffold.py` | `uv sync` 성공 · `import omra` 성공 · 1차 패키지 24종 + 하위 패키지 20종이 **정확히** 설계 01 §2.1 트리와 일치(누락·초과 양방향 단정) · 전 패키지가 소유 설계서를 docstring에 명시 · 최상위 잡 모듈 0건 · **90 passed** | 01 §2.1·§2.3·§2.4, 계획 01 §1.5·§2 | ☑ | `feat: 저장소 스캐폴드와 패키지 골격 구성` |
 | **S01-2** | ruff·mypy 정적 게이트 구성 | `pyproject.toml`(`[tool.ruff]`·`[tool.mypy]`) | `ruff check .`·`ruff format --check .`·`mypy` green · strict 섬 모듈 목록이 16 §3.1 표와 문자 단위 일치(V16-07) · banned-api 4종(`datetime.now`·`date.today`·`time.sleep`·`random.random`) 등록 | 16 §3.1 [DD-16-2]·§3.3 [DD-16-3] | ☐ | |
 | **S01-3** | import-linter 계약 C01~C15 전량 등록 | `pyproject.toml`(`[tool.importlinter]`) | `lint-imports` green · 계약 15종 등록 · `allow_indirect_imports` 필요 여부 실측 후 반영 · 위반 커밋 실차단 확인(AT-7) | 01 §8.2 [DD-01-7·8·15], 계획 01 §2.2 | ☐ | |
 | **S01-4** | pytest 하네스·결정론 픽스처 | `pyproject.toml`(`[tool.pytest.ini_options]`), `tests/conftest.py`, `tests/marks.py`, `tests/factories.py`, `tests/property/strategies.py` | 마커 없는 테스트 0건 단정(V16-02) · 디렉터리↔마커 불일치가 수집 단계 실패(V16-01) · network kill 픽스처가 소켓 차단 · hypothesis 프로파일 3종(`dev`/`ci`/`nightly`) 등록 | 16 §2.1 [DD-16-1]·§2.3·§4.3·§11.2 | ☐ | |
