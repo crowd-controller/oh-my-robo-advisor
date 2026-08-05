@@ -2,3 +2,9 @@
 
 정본: 설계 02
 """
+
+from __future__ import annotations
+
+from omra.core.ids import Market
+
+__all__ = ["Market"]
