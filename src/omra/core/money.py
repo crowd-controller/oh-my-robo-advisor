@@ -21,10 +21,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from typing import Annotated, Final
-from zoneinfo import ZoneInfo
 
 from pydantic import BeforeValidator
 
+from omra.core.clock import KST
 from omra.core.errors import InvariantViolation, LotStepError
 
 __all__ = [
@@ -39,9 +39,6 @@ __all__ = [
     "usd_budget",
     "utc_to_text",
 ]
-
-#: 한국 표준시. 영속 시각 필드(`*_kst`)와 브리핑·감사 봉투가 쓴다.
-KST: Final = ZoneInfo("Asia/Seoul")
 
 _ZERO: Final = Decimal(0)
 
