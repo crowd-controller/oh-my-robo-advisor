@@ -67,8 +67,10 @@ def _instrument(
 def test_models_public_exports_are_exact_current_surface() -> None:
     assert models.__all__ == [
         "EQUITY_CLASSES",
+        "Fill",
         "Instrument",
         "Market",
+        "Order",
         "OrderIntent",
         "OrderSide",
         "OrderStatus",
