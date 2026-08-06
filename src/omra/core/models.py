@@ -4,7 +4,7 @@
 같은 타입을 재수출한다. `Instrument`는 시장·통화·호가단위·수량 격자의 잘못된
 조합을 생성 경계에서 fail-fast로 차단한다.
 
-정본: 설계 02 §4·§7.1~§7.2 [DD-02-4·5·6·17·19]
+정본: 설계 02 §4·§7.1~§7.2 [DD-02-4·5·6·17·18·19]
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Final, Literal, Self
 
 from pydantic import BaseModel, model_validator
 
-from omra.core.errors import InvariantViolation
+from omra.core.errors import InvariantViolation, TransitionError
 from omra.core.ids import Market, instrument_key
 from omra.core.money import Dec  # noqa: TC001 - Pydantic needs the runtime validator.
 from omra.core.tick import TickRuleId
@@ -29,6 +29,7 @@ __all__ = [
     "OrderStatus",
     "OrderType",
     "PlanReason",
+    "assert_transition",
 ]
 
 EQUITY_CLASSES: Final = frozenset({"kr_etf_equity", "us_etf_equity", "us_stock"})
@@ -104,6 +105,47 @@ class OrderStatus(StrEnum):
     REJECTED = "REJECTED"
     EXPIRED = "EXPIRED"
     EXPIRED_UNKNOWN = "EXPIRED_UNKNOWN"
+
+
+_TERMINAL: Final = frozenset(
+    {
+        OrderStatus.FILLED,
+        OrderStatus.CANCELLED,
+        OrderStatus.REJECTED,
+        OrderStatus.EXPIRED,
+    }
+)
+_ALLOWED_TRANSITIONS: Final = frozenset(
+    {
+        (OrderStatus.SUBMITTING, OrderStatus.PENDING),
+        (OrderStatus.SUBMITTING, OrderStatus.REJECTED),
+        (OrderStatus.SUBMITTING, OrderStatus.EXPIRED_UNKNOWN),
+        (OrderStatus.PENDING, OrderStatus.PARTIALLY_FILLED),
+        (OrderStatus.PENDING, OrderStatus.FILLED),
+        (OrderStatus.PENDING, OrderStatus.CANCELLED),
+        (OrderStatus.PENDING, OrderStatus.EXPIRED),
+        (OrderStatus.PARTIALLY_FILLED, OrderStatus.FILLED),
+        (OrderStatus.PARTIALLY_FILLED, OrderStatus.CANCELLED),
+        (OrderStatus.PARTIALLY_FILLED, OrderStatus.EXPIRED),
+        (OrderStatus.EXPIRED_UNKNOWN, OrderStatus.PENDING),
+        (OrderStatus.EXPIRED_UNKNOWN, OrderStatus.CANCELLED),
+    }
+)
+
+
+def assert_transition(current: OrderStatus, new: OrderStatus) -> None:
+    """주문 상태 전이가 정본 전이표에 속하는지 검증한다.
+
+    동일 상태 재적용은 멱등 갱신으로 허용한다. 그 밖의 표 외 전이는 주문 원장의
+    불변식 위반이므로 재시도 불가 버그 신호인 ``TransitionError``를 발생시킨다.
+    """
+    if current == new or (current, new) in _ALLOWED_TRANSITIONS:
+        return
+    raise TransitionError(
+        "합법 주문 상태 전이표 밖의 전이",
+        current=current.value,
+        new=new.value,
+    )
 
 
 class OrderIntent(StrEnum):

@@ -95,7 +95,7 @@ Codex 공동 작성은 이름만 적지 않고 GitHub의 `codex` 계정에 연�
 
 | 마일스톤 | 스테이지 | 단위 수 | 완료 | 진행률 | 상태 |
 |---|---|---:|---:|---:|---|
-| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 14 | 26% | ◐ |
+| **M0** 스캐폴드 (기반 계층) | S01~S08 | 54 | 15 | 28% | ◐ |
 | **M1** 데이터·브로커 read-only·감시 데이터층 | S09~S17 | 47 | 0 | 0% | ☐ |
 | **M2** 엔진·백테스트 | S18~S25 | 37 | 0 | 0% | ☐ |
 | **M3** dry-run 라이브 루프·감시 정책층 | S26~S32 | 43 | 0 | 0% | ☐ |
@@ -107,16 +107,16 @@ Codex 공동 작성은 이름만 적지 않고 GitHub의 `codex` 계정에 연�
 | **M8** 목표기반·리포팅·계좌 자동화 | S49~S51 | 14 | 0 | 0% | ☐ |
 | **M10a** 자가 개선 — 지식 수집 | S52 | 7 | 0 | 0% | ☐ |
 | *(보류)* labs 챌린저층 | S53 | 6 | 0 | — | ⏸ |
-| **합계** | **53** | **307** | **14** | **4.6%** | |
+| **합계** | **53** | **307** | **15** | **4.9%** | |
 
 > **M0의 범위에 관한 주의**: 계획 04 §2 M0이 명시적으로 열거한 것은 저장소 구조·설정 계층·TR-ID 매핑·Docker·CI·감사 로거다. 여기에 `core`·`persistence`·`runtime`을 함께 넣은 근거는 **설계 03 §4.4가 "초기 리비전 = M0에서 §3 전 테이블 + 트리거 + 전 인덱스 생성"으로 확정**했고, 설계 01 §2.4가 "전 패키지는 M0부터 빈 패키지로라도 존재해야 한다"를 요구하며, 감사 로거가 `core.ids`(ULID)·`core.money`(KST 직렬화)에 의존하기 때문이다. 즉 M0는 **"M1이 착수 가능해지는 최소 기반"**이며 로드맵의 M0 열거를 줄이거나 늘린 것이 아니다.
 
 ### 2.2 현재 작업 위치
 
 ```
-▶ 현재 단위 : S03-3 (주문 상태 전이표·assert_transition)
-  직전 완료 : S03-2 (Instrument·주문 enum)
-  다음 단위 : S03-4 (Order·Fill 모델)
+▶ 현재 단위 : S03-4 (Order·Fill 모델)
+  직전 완료 : S03-3 (주문 상태 전이표·assert_transition)
+  다음 단위 : S03-5 (계획 모델 RebalancePlan·TargetWeights·SanityResult)
 ```
 
 ---
@@ -179,7 +179,7 @@ Codex 공동 작성은 이름만 적지 않고 GitHub의 `codex` 계정에 연�
 |---|---|---|---|---|:--:|---|
 | **S03-1** | 상태 enum·제약 벡터 `core.states` | `src/omra/core/states.py`, `tests/unit/core/test_states.py` | `BotState` 6값·`SleeveState` 3값·`PresenceState` 4값이 계획 01 §3.4와 문자 단위 일치(스냅샷·정의 위치 고정) · `BuyAxis` 2값 / `SellAxis` 3값 `IntEnum` exact 값·alias 부재 + 격자 3/6조합 전수 검증 · `NetBuyCap`·`ConstraintVector` exact 필드 타입 + frozen · `Dec` float·bool 거부 · 항등원(None cap)·cap 존재 JSON 직렬화 왕복 · **26 tests / 전체 495 passed, 2 xfailed** | 02 §9 [DD-02-13] | ☑ | `feat(core): 상태 enum과 제약 벡터 타입 구현` |
 | **S03-2** | `Instrument`·주문 enum | `src/omra/core/models.py`(1차), `tests/unit/core/test_instrument.py` | `Instrument` frozen + market×currency×tick_rule×lot_step 교차 검증표 위반 조합 전수 거부 · `EQUITY_CLASSES` 상수 스냅샷 · `OrderSide` 2값·`OrderType` 6값·`OrderStatus` 8값·`OrderIntent` 11값·`PlanReason` 5값 스냅샷 · core 소스에 `CANO`·`ACNT_PRDT_CD` 문자열 부재(아키텍처 테스트) · **91 tests / 전체 586 passed, 2 xfailed** | 02 §4·§7.1~§7.2 [DD-02-4·5·6·17·19] | ☑ | `feat(core): Instrument와 주문 enum 구현` |
-| **S03-3** | 주문 상태 전이표·`assert_transition` | `src/omra/core/models.py`(2차), `tests/unit/core/test_transition.py` | 8×8 전이 행렬에서 02 §7.1 표의 합법 전이만 통과 · `EXPIRED_UNKNOWN → CANCELLED` 허용·`→ FILLED` 거부 · 동일 상태 갱신(멱등) 허용 · `_TERMINAL` 4값 | 02 §7.1 [DD-02-5·18] | ☐ | |
+| **S03-3** | 주문 상태 전이표·`assert_transition` | `src/omra/core/models.py`(2차), `tests/unit/core/test_transition.py` | 8×8 전이 행렬에서 02 §7.1 표의 합법 전이만 통과 · `EXPIRED_UNKNOWN → CANCELLED` 허용·`→ FILLED` 거부 · 동일 상태 갱신(멱등) 허용 · `_TERMINAL` 4값 · **65 tests / 전체 651 passed, 2 xfailed** | 02 §7.1 [DD-02-5·18] | ☑ | `feat(core): 주문 상태 전이표 구현` |
 | **S03-4** | `Order`·`Fill` 모델 | `src/omra/core/models.py`(3차), `tests/unit/core/test_order_fill.py` | `Order` validator 4종(qty>0 + lot_step 격자 / limit_price 필수·금지 조합 / `is_aligned` / aware datetime) · `transition_to()` 외 status 대입 금지 아키텍처 테스트 · `filled_qty`를 필드로 두지 않음(fills 합산 파생) · `Fill` frozen·qty>0·price>0 | 02 §7.3 [DD-02-5] | ☐ | |
 | **S03-5** | 계획 모델 `RebalancePlan`·`TargetWeights`·`SanityResult` | `src/omra/core/models.py`(4차), `tests/unit/core/test_plan.py` | `SanityResult` 4필드(`hrp_gap_max`·`threshold`·`passed`·`by_group`) · `TargetWeights.weights` 키가 `instrument_key` · `RebalancePlan` 불변식(모든 order의 `plan_id == self.id`) · 내용 검증은 core가 하지 않음 | 02 §7.4 [DD-02-14·16·19] | ☐ | |
 | **S03-6** | 계좌·슬리브 `core.accounts` | `src/omra/core/accounts.py`, `tests/unit/core/test_accounts.py` | `Broker` 2값·`AccountType` 5값·`AccountMode` 3값·`SleeveId` 3값 · `Account.id` 슬러그 정규식 `^[a-z][a-z0-9_]{1,31}$` 검증 · `sleeve_of` (Broker 2 × Market 5) 전수 조합 표 테스트, 미정의 조합은 `IdentifierError` · 실계좌번호 필드 부재 | 02 §3.3~§3.4 [DD-02-3] | ☐ | |

@@ -64,7 +64,7 @@ def _instrument(
     )
 
 
-def test_models_public_exports_are_exact_s03_2_surface() -> None:
+def test_models_public_exports_are_exact_current_surface() -> None:
     assert models.__all__ == [
         "EQUITY_CLASSES",
         "Instrument",
@@ -74,6 +74,7 @@ def test_models_public_exports_are_exact_s03_2_surface() -> None:
         "OrderStatus",
         "OrderType",
         "PlanReason",
+        "assert_transition",
     ]
 
 
