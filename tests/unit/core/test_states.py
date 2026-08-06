@@ -241,9 +241,9 @@ def test_constraint_models_are_frozen() -> None:
     )
 
     with pytest.raises(ValidationError) as cap_exc:
-        cap.daily_nav_pct = Decimal("0.04")
+        cap.daily_nav_pct = Decimal("0.04")  # type: ignore[misc]  # deliberate frozen violation
     with pytest.raises(ValidationError) as vector_exc:
-        vector.targets_update = False
+        vector.targets_update = False  # type: ignore[misc]  # deliberate frozen violation
 
     assert cap_exc.value.errors()[0]["type"] == "frozen_instance"
     assert vector_exc.value.errors()[0]["type"] == "frozen_instance"
