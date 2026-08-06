@@ -112,8 +112,12 @@ jobs:
       # lockfile 이 pyproject 와 어긋나면 실패한다 — 재현성의 전제.
       - run: uv lock --check
       # 취약점 발견 시 실패시키되 **자동 업데이트 PR은 만들지 않는다**
-      # (O2 = 수동 승인 배포, 계획 00 §3.2).
-      - run: uv run pip-audit --strict
+      # (O2 = 수동 승인 배포, 계획 00 §3.2). 로컬 프로젝트 `omra`는 PyPI
+      # 배포물이 아니므로 잠금된 전체 의존성을 requirements로 내보내 감사한다.
+      - run: |
+          uv export --frozen --all-groups --no-emit-project --format requirements.txt \
+            --output-file /tmp/omra-audit-requirements.txt
+          uv run pip-audit --strict --requirement /tmp/omra-audit-requirements.txt
       # 카세트 시크릿 스캔 — 스캐너는 S16-4가 만든다. 그 전까지는 카세트가
       # 없으므로 스캔 대상도 없다 (16 §5.7).
       - name: cassette secret scan

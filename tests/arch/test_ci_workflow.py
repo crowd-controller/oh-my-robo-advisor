@@ -169,7 +169,8 @@ def test_j10_checks_lock_and_audits_dependencies(jobs: dict[str, Any]) -> None:
     """공급망 — lock 정합 + 취약점 감사. **자동 업데이트 PR은 만들지 않는다.**"""
     text = _steps_text(jobs["j10-supply-chain"])
     assert "uv lock --check" in text
-    assert "pip-audit" in text
+    assert "uv export --frozen --all-groups --no-emit-project" in text
+    assert "pip-audit --strict --requirement" in text
     assert "dependabot" not in text.lower()
 
 
