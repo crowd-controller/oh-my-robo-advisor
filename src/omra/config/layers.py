@@ -136,27 +136,19 @@ def deep_merge(
     return merged
 
 
-def load_yaml_mapping(path: Path) -> dict[str, object]:
-    """Load a UTF-8 YAML mapping and retain actionable parser locations."""
+def parse_yaml_mapping(raw: bytes, *, source: Path) -> dict[str, object]:
+    """Parse one UTF-8 YAML mapping using the canonical duplicate-key rules."""
     try:
-        document = yaml.load(
-            path.read_text(encoding="utf-8"),
-            Loader=_UniqueKeyLoader,  # noqa: S506
-        )
-    except OSError as error:
-        raise ConfigValidationError(
-            (
-                Violation(
-                    code="file_unreadable",
-                    message=str(error),
-                    source=path,
-                ),
-            )
-        ) from error
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ConfigSyntaxError(source, "configuration file is not valid UTF-8") from error
+
+    try:
+        document = yaml.load(text, Loader=_UniqueKeyLoader)  # noqa: S506
     except yaml.MarkedYAMLError as error:
         mark = error.problem_mark
         raise ConfigSyntaxError(
-            path,
+            source,
             error.problem or str(error),
             line=None if mark is None else mark.line + 1,
             column=None if mark is None else mark.column + 1,
@@ -170,13 +162,30 @@ def load_yaml_mapping(path: Path) -> dict[str, object]:
                 Violation(
                     code="invalid_root",
                     message=f"expected a mapping, got {type(document).__name__}",
-                    source=path,
+                    source=source,
                     line=1,
                     column=1,
                 ),
             )
         )
     return _copy_mapping(cast("Mapping[str, object]", document))
+
+
+def load_yaml_mapping(path: Path) -> dict[str, object]:
+    """Load a UTF-8 YAML mapping and retain actionable parser locations."""
+    try:
+        raw = path.read_bytes()
+    except OSError as error:
+        raise ConfigValidationError(
+            (
+                Violation(
+                    code="file_unreadable",
+                    message=str(error),
+                    source=path,
+                ),
+            )
+        ) from error
+    return parse_yaml_mapping(raw, source=path)
 
 
 def _reject_json_constant(value: str) -> None:
