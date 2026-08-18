@@ -31,6 +31,7 @@ oh-my-robo-advisor/
 ├── Dockerfile                 # ★ §7.2
 ├── docker-compose.yml         # ★ §7.1
 ├── .env / .env.litestream / .env.tools    # 시크릿 3분할 (정본: 01 §1.6·§6.1)
+├── CONTRIBUTING.md            # branch·commit·검증·자동화 신원 규칙
 ├── config/                    # 사람이 편집하는 입력물, 컨테이너에 :ro 마운트 (정본: 01 §2)
 │   ├── config.yaml / config.live.yaml / config.paper.yaml
 │   ├── universe.yaml / targets.yaml / goals.yaml / tax.yaml
@@ -41,6 +42,7 @@ oh-my-robo-advisor/
 ├── docs/
 │   ├── plan/                  # 계획 정본 00~07
 │   ├── design/                # 이 설계서 세트
+│   ├── engineering/           # 일반 개발 workflow·문서 이관 감사(제품 정본 아님)
 │   └── runbook/               # secret-rotation.md, restore-drill.md, spike-c4.md (구조는 12 §runbook)
 ├── src/omra/
 │   ├── __main__.py            # ★ §3.1 — cli의 Typer 앱에 위임하는 별칭
@@ -301,7 +303,7 @@ dec.bind_market("guards", ctx.realtime.guards.on_market)    # 호가·체결가�
 
 > **[DD-01-17] decoder 핸들러·세션 인자 배선의 단일 지점 = `runtime/bot.py` phase C**
 > - 결정: `bind_market_status`·`bind_market`·장중 여부 술어·`start_delay` 4종의 주입은 **조립 루트에서만** 수행한다. 어떤 잡·태스크도 실행 중 핸들러를 재바인딩하지 않으며, 재바인딩이 필요하면 `RELOAD_CONFIG`(§6.3)로 Bot을 재생성한다.
-> - 근거: 요청 출처는 [05](05-broker-gateway.md) §7.5 [DD-05-1]("조립 루트가 등록한 콜백을 decoder가 동기 직접 호출") 및 §11.1 조율표 C6. 런타임 재바인딩을 허용하면 "직접 호출"의 호출 그래프가 시점에 따라 달라져 예외 격리 카운터(01 §2.4)의 의미가 흐려지고, `Bot`이 서브시스템의 소멸까지 소유한다는 §3.2-3의 전제가 깨진다.
+> - 근거: 요청 출처는 [05](05-broker-gateway.md) §7.5 [DD-05-1] ("조립 루트가 등록한 콜백을 decoder가 동기 직접 호출") 및 §11.1 조율표 C6. 런타임 재바인딩을 허용하면 "직접 호출"의 호출 그래프가 시점에 따라 달라져 예외 격리 카운터(01 §2.4)의 의미가 흐려지고, `Bot`이 서브시스템의 소멸까지 소유한다는 §3.2-3의 전제가 깨진다.
 > - 계획 문서와의 관계: 충돌 없음 — 계획 01 §2.4의 "decoder가 가드 함수를 직접 호출"의 물리적 배선 위치라는 여백을 채운다.
 
 - `fill_queue: asyncio.Queue[FillEvent]` — **무제한(maxsize=0)**. 시세와 달리 Fill은 유실 불가이므로 배압으로 버리는 선택지가 없다.
@@ -313,7 +315,7 @@ dec.bind_market("guards", ctx.realtime.guards.on_market)    # 호가·체결가�
 
 - 시세 계열은 큐 없이 **최신값 슬롯**(종목당 마지막 이벤트 1개 보관, 낡으면 덮어씀 — 정본: 01 §9.2-3)이다. 슬롯 자료구조는 `realtime`(11)이 소유한다.
 - 핸들러 예외 격리: warning + 감사로그, 3회 연속 시 해당 가드 비활성 + critical (정본: 01 §2.4). 연속 실패 카운터는 `execution` 소유의 `execution_state`에 영속화된다(정본: 01 §3.5 — 복원은 §5.3).
-- **`order_lock`**: 주문 생성·제출과 순매수 회계는 단일 `asyncio.Lock` 안에서 원자적으로 실행된다(정본: 01 §1.4-2). 락 객체는 `execution`이 소유하고([08](08-execution.md) §order_lock 정본), 이 문서 수준의 규칙은 하나다 — **`order_lock`을 잡은 채 이 락 밖의 다른 락을 기다리는 코드를 금지**한다(프로세스 내 `asyncio.Lock`은 `order_lock`·`token_lock`(01 §5.1 "401 수신 시 asyncio.Lock 안에서 1회만 재발급") 2개뿐이며, 순서는 언제나 `order_lock` → `token_lock` 단방향. 프로세스 간 토큰 파일락 `/app/var/db/.token.lock`은 별개 층이다 — 정본: 01 §5.1).
+- **`order_lock`**: 주문 생성·제출과 순매수 회계는 단일 `asyncio.Lock` 안에서 원자적으로 실행된다(정본: 01 §1.4-2). 락 객체는 `execution`이 소유하고([08](08-execution.md) §order_lock 정본), 허용되는 유일한 중첩 획득은 **`order_lock` → `token_lock`**이다. 역순(`token_lock` 보유 중 `order_lock` 대기)과 그 밖의 락 중첩을 금지한다. 프로세스 간 토큰 파일락 `/app/var/db/.token.lock`은 별개 층이다(정본: 01 §5.1).
 
 ### 4.4 이벤트 루프 보호 규율
 
@@ -1130,7 +1132,7 @@ forbidden_modules = [
 | 01 §2.1 패키지 4종 배치 근거 | §2.1 트리 주석 | 근거 서술은 계획 참조로 대체 |
 | 01 §2.2 import-linter 계약 (유일 원문) | §8.2 C01~C07b·C10·C11 | 1:1 기계 번역, 충돌 시 계획 우선. 금지줄은 "1차 패키지 − 허용 목록"으로 생성 |
 | 01 §2.2 ② repos 완전열거(“열거되지 않은 모듈은 전부 금지줄로 명시”) | §8.1.1 표, §8.2 C04b·C05b·C07b | 모듈명 정본은 03 §2.1 트리. 동기화 강제는 AT-1([DD-01-7]) |
-| 01 §2.2 “열거되지 않은 간선의 기본값은 허용” 여백 | §8.2 C08·C09·C12·C13·C14·C15 | 소유 문서 자기부과분의 등재 — [DD-01-15](출처: 06·09·13·15·10) |
+| 01 §2.2 “열거되지 않은 간선의 기본값은 허용” 여백 | §8.2 C08·C09·C12·C13·C14·C15 | 소유 문서 자기부과분의 등재 — [DD-01-15] (출처: 06·09·13·15·10) |
 | 04 §2 M1 "관측 계층 → engine 금지 = research·surveillance·realtime" | §8.2 C04a/C05a/C06a | `labs`는 engine 순수함수 허용이므로 제외 |
 | 01 §2.3 거래정지·VI 단일 소유권 | §4.3 배선, §8.3 AT-4 | 판정은 11 |
 | 01 §2.4 decoder 직접 호출 + Fill 큐 | §4.3 | |

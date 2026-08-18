@@ -6,16 +6,16 @@
 
 ## 1. 문서 맵
 
-16개 설계서, 총 22,629줄(이 총괄 문서 포함 22,817줄). `DD`는 계획에 없던 설계 결정 선언, `[확인 필요]`는 계획에 근거가 없어 외부 확인으로 미룬 항목이다.
+세부 설계서 16개는 총 22,631줄이고, 이 총괄 문서를 포함한 설계 세트는 22,826줄이다. `DD`는 계획에 없던 설계 결정 선언, `[확인 필요]`는 계획에 근거가 없어 외부 확인으로 미룬 항목이다.
 
 | # | 문서 | 줄 | DD | 확인필요 | 이 문서가 **소유**하는 정의 |
 |---|---|---:|---:|---:|---|
-| 01 | [01-system-architecture.md](01-system-architecture.md) | 1,205 | 16 | 7 | 프로세스 토폴로지, asyncio 태스크 배열, 기동/종료 시퀀스·셀프체크, Docker Compose, **import-linter 계약 파일** |
+| 01 | [01-system-architecture.md](01-system-architecture.md) | 1,207 | 16 | 7 | 프로세스 토폴로지, asyncio 태스크 배열, 기동/종료 시퀀스·셀프체크, Docker Compose, **import-linter 계약 파일** |
 | 02 | [02-domain-model.md](02-domain-model.md) | 905 | 21 | 9 | `core/` 전체 — Instrument·Order·Fill·RebalancePlan, **`OrderIntent`(출처 태그 단일 정본)**, 식별자 체계, Decimal/틱 규약, Clock, 예외 계층 |
 | 03 | [03-data-and-persistence.md](03-data-and-persistence.md) | 1,613 | 37 | 15 | **SQLite DDL 전체**, `persistence/`(repos 화이트리스트·ro 세션·alembic), Parquet 레이아웃, DuckDB 뷰, **감사로그 JSONL 스키마**, 백업·복구 |
 | 04 | [04-configuration-and-secrets.md](04-configuration-and-secrets.md) | 1,968 | 20 | 9 | **config YAML 스키마 전체**(13종 파일), 계층 병합·env 오버라이드, 시크릿 3종 분리·만료 대장 |
 | 05 | [05-broker-gateway.md](05-broker-gateway.md) | 1,259 | 14 | 20 | `BrokerGateway` ABC와 dry-run 분기, KIS(REST·WS·auth·tr_map), 업비트, paper 시뮬레이터, TokenManager, RateLimiter |
-| 06 | [06-market-data-and-calendar.md](06-market-data-and-calendar.md) | 1,113 | 16 | 28 | TET Fetcher·provider 레지스트리, quote fetcher, Parquet 스토어, 캘린더·세션 상태머신·결제일, **FX 처리** |
+| 06 | [06-market-data-and-calendar.md](06-market-data-and-calendar.md) | 1,113 | 16 | 27 | TET Fetcher·provider 레지스트리, quote fetcher, Parquet 스토어, 캘린더·세션 상태머신·결제일, **FX 처리** |
 | 07 | [07-portfolio-engine.md](07-portfolio-engine.md) | 1,672 | 19 | 6 | `engine/` 순수 함수 — BL·LW·제약 MVO 2단계·HRP sanity·rebalancer·유니버스 필터·glide·몬테카를로·오버레이 |
 | 08 | [08-execution.md](08-execution.md) | 1,103 | 17 | 6 | 주문 생성·제출 프로토콜, **`order_lock` 계약**, router(AccountMode), 재호가, 체결 추적, EOD 대사, E7 집행 절차 |
 | 09 | [09-safety-protections.md](09-safety-protections.md) | 1,596 | 22 | 5 | **P1~P15 플러그인 체인**, **pre-trade 체인**, 3평면×5축 상태 결합, SAFE_MODE, 순매수 회계, Kill Switch, 부재 사다리 |
@@ -27,13 +27,7 @@
 | 15 | [15-backtest-and-validation.md](15-backtest-and-validation.md) | 1,210 | 18 | 8 | `backtest/`(일 단위 시뮬·**BarView**·Walk-Forward·lookahead 탐지·검증 게이트·TE 5항목 분해) |
 | 16 | [16-testing-and-quality.md](16-testing-and-quality.md) | 1,463 | 14 | 6 | 테스트 전략 구현(단위·계약·아키텍처·장애 주입·부재 시뮬), CI 파이프라인, DoD 대응표 |
 
-**합계**: 22,629줄 · DD 313 · `[확인 필요]` 158. (`DD-01-2`는 결번 — 01 §10 참조)
-
-### 1.0 설계서가 아닌 문서 — 구현 진행 관리
-
-| # | 문서 | 성격 | 이 문서가 **소유**하는 것 |
-|---|---|---|---|
-| 17 | [17-implementation-progress.md](17-implementation-progress.md) | **진행 관리(설계서 아님)** | 설계 01~16을 실제 코드로 옮기는 **단위 분해·착수 순서·진행 상태**. 53개 스테이지 · 307개 단위. 설계 결정을 새로 내리지 않으며 설계서와 어긋나면 **언제나 설계서가 이긴다**. 마일스톤 순서의 정본은 계획 [04-roadmap.md](../plan/04-roadmap.md)다 |
+**합계**: 22,631줄 · DD 313 · `[확인 필요]` 157. (`DD-01-2`는 결번 — 01 §10 참조)
 
 ### 1.1 소유권 경계 — 중복 정의 금지
 
@@ -49,7 +43,7 @@
 
 ## 2. 읽는 순서
 
-구현 착수 시 아래 순서를 권장한다. 앞 그룹이 뒤 그룹의 어휘를 정의한다.
+설계서를 읽을 때 아래 순서를 권장한다. 앞 그룹이 뒤 그룹의 어휘를 정의한다.
 
 1. **기반** — 00(이 문서) → 02(도메인 모델) → 03(스키마) → 04(설정)
 2. **경계** — 01(아키텍처·의존 규율) → 05(브로커) → 06(데이터·캘린더)
@@ -80,7 +74,8 @@
 
 1. **계획 문서** — 집행 스펙 = 계획 02, 안전장치 파라미터 = 계획 03, 모듈 구조·인프라 = 계획 01, 실시간·감시 = 계획 06, 자가 개선 = 계획 07, 자동화 등급 = 계획 00 §3, 근거 = 계획 05. **import-linter 계약의 유일 원문은 계획 01 §2.2**.
 2. **설계서 소유 문서** — §1 표의 "소유하는 정의" 열.
-3. 그 외 문서의 인용은 사본이며, 사본이 정본과 다르면 **사본이 틀린 것**이다.
+3. **일반 개발 정책** — [engineering 문서](../engineering/README.md)와 [기여 가이드](../../CONTRIBUTING.md)는 branch·commit·완료 절차만 소유하며 제품 정의를 바꾸지 않는다.
+4. 그 외 문서의 인용은 사본이며, 사본이 정본과 다르면 **사본이 틀린 것**이다.
 
 ### 3.3 계획이 배제한 것은 설계로 되살리지 않는다
 
@@ -165,12 +160,12 @@
 | **SP-B3** | 앱키당 동시 WS 세션 수 | 01·05 |
 | **SP-R1** | 리서치 수집 소스 실측 | 14 |
 
-### 7.2 `[확인 필요]` 161건의 분포
+### 7.2 `[확인 필요]` 157건의 분포
 
 계획에 근거가 없어 설계가 단정하지 않은 외부 사실이다. 분포가 편중된 문서가 있는데, 이는 결함이 아니라 **해당 영역이 외부 사업자 스펙에 의존한다는 사실의 정직한 반영**이다.
 
-- **06(28건)·05(20건)** — KIS·업비트 API 스펙, 지표 소스, 휴장일 교차검증 등. 대부분 M1 실호출·카세트 녹화로 확정된다.
-- **03(15건)·11(12건)** — 도구 체인(Litestream·DuckDB) 세부, M9 조건부 항목.
+- **06(27건)·05(20건)** — KIS·업비트 API 스펙, 지표 소스, 휴장일 교차검증 등. 대부분 M1 실호출·카세트 녹화로 확정된다.
+- **03(15건)·11(11건)** — 도구 체인(Litestream·DuckDB) 세부, M9 조건부 항목.
 - 나머지 문서는 6~10건 수준.
 
 ### 7.3 계획 문서에 대한 이견 기록
@@ -196,4 +191,5 @@
 2. **정의를 바꿀 때는 소유 문서만 고친다.** 사본을 먼저 고치면 두 벌이 생긴다. 소유 문서를 고친 뒤 참조 문서를 검색해 인용을 맞춘다.
 3. **스파이크 결과 반영은 `[확인 필요]` 항목의 치환이다.** 해당 표기를 확정 값 + 출처(실측 일자·문서)로 교체하고, 미해결 항목 절에서 제거한다.
 4. **새 결정은 DD로 선언한다.** 번호는 문서별 연속(`DD-<문서번호>-<일련번호>`), 각 문서 말미 DD 목록표에 등재한다.
-5. **모든 설계서는 표준 구조를 유지한다** — 범위·정본 헤더 / 본문 / 계획 문서 추적표 / DD 목록 / 미해결 항목. 16종 전부 이 구조를 갖추고 있다.
+5. **일반 개발 workflow와 commit 규칙은 별도 정책 문서가 소유한다.** [개발 workflow](../engineering/development-workflow.md)와 [기여 가이드](../../CONTRIBUTING.md)를 따르며 이 설계서에 작업 상태를 기록하지 않는다.
+6. **모든 설계서는 표준 구조를 유지한다** — 범위·정본 헤더 / 본문 / 계획 문서 추적표 / DD 목록 / 미해결 항목. 16종 전부 이 구조를 갖추고 있다.
