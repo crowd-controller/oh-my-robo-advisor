@@ -227,7 +227,7 @@ class StaleDataError(DataError):                    # §6.2 / §9.4 신선도 �
 | `quote` | NASD·NYSE·AMEX | `[KisOverseasQuoteFetcher]` | 미국 장중 60초 스냅(종목당 1콜) | 01 §5.4 |
 | `quote` | UPBIT | `[UpbitTickerFetcher]` | WS 폴백 시에만(평시 소비 0) | 01 §5.4 |
 | `fx_rate` | (pair=USDKRW) | `[KisFxFetcher, FdrFxFetcher]` | 07:00 스냅샷·김프 분모 | 01 §3.3, 02 §4.7(a) |
-| `etf_nav` | KRX | `[KisEtfNavFetcher]` | iNAV 게이트 REST 경로 | 02 §4.4 — TR [확인 필요](§6.4) |
+| `etf_nav` | KRX | `[KisEtfNavFetcher]` | iNAV 게이트 REST 경로 | 02 §4.4 — TR [확인 필요] (§6.4) |
 | `quote_global_btc` | — | M7 스파이크로 확정 | 김치프리미엄 분자 상대편 | 01 §3.3, 04 §5.2 |
 | `holiday` | KRX | `[KisHolidayFetcher]` | 07:00 교차검증(§10.2) | 01 §4.1 (CTCA0903R) |
 | `master` | KRX | `[KisMasterFetcher]` | 02:10 `surv_master_sync` (§8) | 05 §7.1, 06 §6.1 |
@@ -378,8 +378,8 @@ class ProviderContext:
 | `KisHolidayFetcher` | `HolidayQuery(base_date)` | `ctx.kis.holiday` (CTCA0903R) | → `list[HolidayRow]` | §10.2. TR ID 표기 불일치(`CTCA0903R` vs `TCA0903R`) 실호출 확정 필요(05 §3.2) |
 | `KisMasterFetcher` | `MasterQuery(files)` | `ctx.http` 무인증 다운로드(05 §7.1 — rate limit 예산 밖) | zip 해제 + 고정폭 파싱 → `list[MasterRecord]` | §8.1 |
 | `KisStockInfoFetcher` | `SurveyQuery(instrument_keys)` | `ctx.kis.stock_info`(CTPF1002R) | → `list[SurveyRecord]`(`kind="stock_info"`) | [DD-06-14]. 필드 해석·등급은 11 소유 |
-| `KisOverseasInfoFetcher` | 〃 | `ctx.kis.overseas_info` 종목당 1콜 | → `list[SurveyRecord]`(`kind="overseas_info"`) | 〃. M6, TR ID [확인 필요](§16-18) |
-| `KisKsdInfoFetcher` | `SurveyQuery(instrument_keys, base_date)` | `ctx.kis.ksdinfo` | → `list[SurveyRecord]`(`kind="ksdinfo"`) | 〃. `td_stop_dt` 사전 채움 여부 [확인 필요](11 §8.3.3) |
+| `KisOverseasInfoFetcher` | 〃 | `ctx.kis.overseas_info` 종목당 1콜 | → `list[SurveyRecord]`(`kind="overseas_info"`) | 〃. M6, TR ID [확인 필요] (§16-18) |
+| `KisKsdInfoFetcher` | `SurveyQuery(instrument_keys, base_date)` | `ctx.kis.ksdinfo` | → `list[SurveyRecord]`(`kind="ksdinfo"`) | 〃. `td_stop_dt` 사전 채움 여부 [확인 필요] (11 §8.3.3) |
 | `GlobalBtcFetcher` | `QuoteQuery` | **M7 스파이크로 소스 확정**(04 §5.2) | → `Quote` | REST 폴링이면 60초 주기 제한(06 §1.1) |
 
 **글로벌 BTC(조건부)**: 소스 미확정 상태에서 인터페이스만 고정한다 — `("quote_global_btc", "-")` 라우트, 산출은 USD 표시 `Quote`. 김치프리미엄 산식(`업비트KRW ÷ (글로벌USD × USDKRW) − 1`)과 stale 규칙의 정본은 06 §2.2이고 가드 구현은 [11-realtime-and-surveillance.md](11-realtime-and-surveillance.md)다. M7 스파이크가 실패해 소스를 확정하지 못하면 `KimchiGuard`는 영구 무판정(= PROCEED)이 되며 이는 06 §2.2 stale 규칙의 자연스러운 확장이다(김프 가드는 안전 요건이 아니라 최적화 — 06 §2.2).
@@ -552,9 +552,9 @@ class IndicatorCache:
 |---|---|---|---|---|
 | 0. 상태 hard 플래그(국내) | `tr_stop_yn`·`admn_item_yn`·`etf_etn_ivst_heed_item_yn`·`lstg_abol_dt` | 종목마스터 PIT(§8) + `CTPF1002R`(surveillance 소유) | — | SP-A1·SP-A2 종속 |
 | 0. 상태 hard(미국) | `ovrs_stck_tr_stop_dvsn_cd`·`lstg_abol_item_yn`·`ptp_item_yn` | KIS 해외 `search_info`(05 §7.1 — surveillance `kis_overseas` 소스) | — | M6 |
-| 0. 상태 hard(공통) | `abs(etp_chas_erng_rt_dbnb) ≤ 1`(레버리지·인버스 배제) | `CTPF1002R`/마스터 — 필드 소재 [확인 필요](SP-A1) | — | M1 스파이크 |
+| 0. 상태 hard(공통) | `abs(etp_chas_erng_rt_dbnb) ≤ 1`(레버리지·인버스 배제) | `CTPF1002R`/마스터 — 필드 소재 [확인 필요] (SP-A1) | — | M1 스파이크 |
 | 0. 상태 hard(크립토) | `market_warning == 'NONE'` | 업비트 `/v1/market/all?isDetails=true`(surveillance `upbit_market` 소스) | — | M7 |
-| 1. 생존: 상장 ≥3년 | `listing_age_years` | 상장일 — 마스터 필드 또는 FDR 상장정보, 소재 [확인 필요](M2에서 확정) | data | M2 |
+| 1. 생존: 상장 ≥3년 | `listing_age_years` | 상장일 — 마스터 필드 또는 FDR 상장정보, 소재 [확인 필요] (M2에서 확정) | data | M2 |
 | 1. 생존: AUM(국내 ≥500억 / 미국 ≥$1B) | `aum` | **[확인 필요]** — ETF AUM(순자산)의 공식 소스(시가총액≠AUM). 확인 방법: pykrx/FDR ETF 엔드포인트 또는 KIS TR을 M2에서 확정. 확정 전 hard 필터는 시총 근사 사용 금지(오판 방향이 비보수적) — 미상 시 보류 플래그 | data | M2 |
 | 1. 생존: 20일 평균 거래대금 | `adv_20` | `ohlcv_daily.value` 롤링 평균 | data | M2 |
 | 2. 비용: TER | `ter` | **[확인 필요]** — 공식 소스 미확정(스크래핑 금지 규칙 00 §6.3 하에서 공식 배포 데이터 확인). M2 | data | M2 |
@@ -647,7 +647,7 @@ class MasterDiff(BaseModel, frozen=True):
 ```
 
 - **소비 경로 1 — 대사 화이트리스트**: 02:00 `nightly_data_batch`가 diff에서 분할/병합·코드 변경을 감지해 화이트리스트 등록(정본: 01 §4.2). 화이트리스트 스키마·판정(`kind=ca_qty`)의 정본은 03 §1.3.1이고 등록 절차의 소유는 [09-safety-protections.md](09-safety-protections.md)(P8 자가치유) — data는 `MasterDiff`를 산출할 뿐이다.
-  - **순서 의존(미해결)**: 01 §4.2는 마스터 diff 소비를 **02:00** 잡에, `.mst.zip` 적재를 **02:10** 잡에 배치했다. [DD-06-8]로 파서를 단일화하면 02:00 시점에는 당일 스냅샷이 아직 없으므로 그 시각의 `diff(prev, curr)`는 **직전 2개 스냅샷 비교**가 된다(CA 감지가 하루 늦다). 잡 시각·순서의 소유는 [12-scheduling-and-operations.md](12-scheduling-and-operations.md)이므로 §16-14에 조율 항목으로 등재한다. 확정 전까지 data는 `diff(prev, curr)`를 **인자로 받은 두 `file_date`에 대해서만** 계산하며 스스로 시각을 가정하지 않는다.
+  - **순서 의존(해소)**: [12-scheduling-and-operations.md](12-scheduling-and-operations.md) §4.4 [DD-12-19]에 따라 잡 시각은 02:00/02:10으로 유지한다. `nightly_data_batch`의 CA 감지 스텝만 같은 `run_date`의 `surv_master_sync` 완료를 최대 30분 기다린 뒤 당일·전일 스냅샷을 비교한다. 미완료면 직전 2개 스냅샷 비교로 퇴화하고 CA 감지 하루 지연을 원장·브리핑·warning에 남긴다. data는 계속 `diff(prev, curr)`를 인자로 받은 두 `file_date`에 대해서만 계산하며 시각과 fallback 선택은 scheduler가 소유한다.
 - **소비 경로 2 — 감시**: `surveillance.sources.kis_master`가 `MasterService`를 통해 플래그를 읽어 `surveillance_flags`를 갱신한다(등급 판정 소유: [11-realtime-and-surveillance.md](11-realtime-and-surveillance.md)). KR-12의 사후 이중화(ksdinfo 실패 시 "야간 마스터 diff 사후 감지로 퇴화" — 06 §6.2)도 이 diff가 입력이다.
 - **CA 비율의 1차 소스는 diff가 아니라 `ksdinfo_*` 사전 캘린더**(03 §1.3, 05 §7.1)다. diff의 `field_changes`는 감지 신호이며, 수량 재현 판정(자가치유 조건 ② "CA 비율로 수량 정확 재현" — 00 §3.2 S1)은 P8 소유. 마스터에 상장주식수류 필드가 있는지는 레이아웃 [확인 필요]에 종속된다.
 
@@ -1079,13 +1079,13 @@ catch-up 분류(01 §4.2.1)상 이 문서가 **쓰기를 수행하는** 잡(`nig
 
 | 요청 출처 | 내용 | 처리 |
 |---|---|---|
-| 05 §11.1 C5 | `MaintenanceSignal` 구간을 CLOSED 취급, 조립 루트 배선 필요 | **수용** — [DD-06-16](§10.4). 배선 지점 명시는 01에 재요청(§16-19) |
+| 05 §11.1 C5 | `MaintenanceSignal` 구간을 CLOSED 취급, 조립 루트 배선 필요 | **수용** — [DD-06-16] (§10.4). 배선 지점 명시는 01에 재요청(§16-19) |
 | 07 [DD-07-12] | §7.3 카탈로그에 `crypto_vol_scale` 행 추가(`UPBIT:SLEEVE`·`window=60`·계산 engine·주 1회·stale 10일) | **수용** — §7.3 표. 캐시 좌표만 06, 산출식·stale 처분은 07 |
-| 11 [DD-11-10] | §4.1 라우팅 표에 `("stock_info", KRX)`·`("overseas_info", US)`·`("ksdinfo", KRX)` 3행 추가 | **수용** — [DD-06-14](§4.1). Port 메서드 3개(§4.4)·`SurveyRecord`(§3.2)·fetcher 3종(§5)·실패 방향(§4.3)까지 함께 확정 |
-| 03 [DD-03-20] | Parquet 스토어 구현이 03 §5.3 쓰기 규약을 따를 것 | **수용** — [DD-06-4](§7.1)를 "규약 정본 03 / 구현 06"으로 정정 |
+| 11 [DD-11-10] | §4.1 라우팅 표에 `("stock_info", KRX)`·`("overseas_info", US)`·`("ksdinfo", KRX)` 3행 추가 | **수용** — [DD-06-14] (§4.1). Port 메서드 3개(§4.4)·`SurveyRecord`(§3.2)·fetcher 3종(§5)·실패 방향(§4.3)까지 함께 확정 |
+| 03 [DD-03-20] | Parquet 스토어 구현이 03 §5.3 쓰기 규약을 따를 것 | **수용** — [DD-06-4] (§7.1)를 "규약 정본 03 / 구현 06"으로 정정 |
 | 03 §5.2 | `master_pit`에 행마다 `instrument_key` 생성·적재(파티션 `venue`와 별개 축) | **수용** — §8.2 |
 | 03 §6 | `duck_connect(data_root, read_only)` 구현·뷰 4+1종 적용은 06, 뷰 정의문은 03 | **수용** — §7.4 (`data/duck.py`). 뷰 SQL은 복사하지 않고 03 소유 파일을 읽어 적용 |
-| 12 §16.1 | Parquet 무결성 재점검 진입점의 공식 이름 확정 | **수용** — [DD-06-15](§7.2) `ParquetStore.verify_latest_partitions()`. 12의 가정 이름과 일치 |
+| 12 §16.1 | Parquet 무결성 재점검 진입점의 공식 이름 확정 | **수용** — [DD-06-15] (§7.2) `ParquetStore.verify_latest_partitions()`. 12의 가정 이름과 일치 |
 
 ## 16. 미해결 항목·스파이크 종속
 
@@ -1104,7 +1104,7 @@ catch-up 분류(01 §4.2.1)상 이 문서가 **쓰기를 수행하는** 잡(`nig
 | 11 | `exchange_calendars`의 임시 휴장(급작 휴장) 반영 지연 | 운영 관측 — 당일 교차검증이 방어선 | MISMATCH 경로로 흡수(§10.2) |
 | 12 | 미국 휴장일의 KIS 교차검증 소스 부재 | 계획에 근거 없음 — 이견 기록: XNYS 단독 판정의 잔여 리스크(연 0~1회 임시 휴장). 브리핑 표기로 완화(§10.2) | XNYS 단독 |
 | 13 | konex 마스터 필요 여부 | 유니버스 확장 시 재검토 | 기본 미포함(config) |
-| 14 | 마스터 diff 소비(02:00)와 `.mst` 적재(02:10)의 순서 역전 | **[확인 필요]** — 잡 시각·순서 소유는 12. 12 §4.5 의존 그래프도 `surv_master_sync → nightly_data_batch`를 **점선**(역방향 시각)으로 남겨 미해소 상태다. 확인 방법: 12에 `nightly_data_batch`의 CA 감지 스텝을 `surv_master_sync` 이후로 옮기거나 두 잡의 시각을 맞바꾸는 조정을 요청하고, 계획 01 §4.2의 시각을 바꿔야 하면 계획 개정 대상으로 승격 | 02:00 diff는 직전 2개 스냅샷 비교(CA 감지 하루 지연). 06 단독 해소 불가 — `MasterService.diff(prev, curr)`는 인자로 받은 두 `file_date`만 비교하며 시각을 가정하지 않는다(§8.3) |
+| 14 | ~~마스터 diff 소비(02:00)와 `.mst` 적재(02:10)의 순서 역전~~ → **해소됨** | [12-scheduling-and-operations.md](12-scheduling-and-operations.md) §4.4 [DD-12-19]가 잡 시각을 유지하고 CA 감지 스텝만 `surv_master_sync` 완료를 최대 30분 기다리도록 확정했다 | 미완료 시 직전 2개 스냅샷 비교로 퇴화하고 CA 감지 하루 지연을 원장·브리핑·warning에 기록. `MasterService.diff(prev, curr)`의 순수 계약은 유지 |
 | 15 | 가드 3-AND ③의 5분과 `protections.quote_stale_min: 5`가 같은 키인가 | 09·11이 판정 — 계획에 대응 근거 없음(§6.2) | data는 `observed_at`만 공급, 임계 정의 없음 |
 | 16 | ~~휴장일 캐시 테이블 DDL 신설 요청~~ → **해소됨**: 03 §3.3.6 `market_holidays`(소스별 행, 컬럼 `venue·cal_date·source·is_open·session_note·fetched_at`)를 그대로 소비하고 `verdict`는 두 `source` 행의 `is_open` 비교로 파생한다([DD-06-10] 정정, 근거 03 [DD-03-9]·§3.5) | — | — |
 | 17 | `data.*` 신설 config 키(`data.quality.max_abs_daily_return`·`data.master.files`·`data.providers.<name>.enabled`) | 04 설계서에 등록 요청([DD-06-5]·[DD-06-7]·§4.1) | 코드 기본값으로 동작, 스키마 검증 미적용 |
