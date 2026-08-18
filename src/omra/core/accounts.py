@@ -5,6 +5,10 @@ from typing import Final
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from omra.core.errors import IdentifierError
+from omra.core.ids import Market
+from omra.core.models import Instrument
+
 ACCOUNT_ID_PATTERN: Final = r"^[a-z][a-z0-9_]{1,31}$"
 
 
@@ -41,6 +45,9 @@ class SleeveId(StrEnum):
     UPBIT = "upbit"
 
 
+US_MARKETS: Final[frozenset[Market]] = frozenset({Market.NASD, Market.NYSE, Market.AMEX})
+
+
 class Account(BaseModel):
     """An internal account identity with no external credentials."""
 
@@ -50,3 +57,21 @@ class Account(BaseModel):
     type: AccountType
     broker: Broker
     mode: AccountMode
+
+
+def sleeve_of(account: Account, instrument: Instrument) -> SleeveId:
+    """Map a broker-by-market pair to its independently controlled sleeve."""
+    if account.broker is Broker.UPBIT:
+        return SleeveId.UPBIT
+    if instrument.market in US_MARKETS:
+        return SleeveId.KIS_OVERSEAS
+    if instrument.market is Market.KRX:
+        return SleeveId.KIS_DOMESTIC
+    raise IdentifierError(
+        "account broker and instrument market do not map to a sleeve",
+        context={
+            "account_id": account.id,
+            "broker": account.broker.value,
+            "instrument_key": instrument.key,
+        },
+    )
