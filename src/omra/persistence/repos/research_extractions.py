@@ -1,0 +1,1 @@
+"""Research-extraction repository coordinate."""

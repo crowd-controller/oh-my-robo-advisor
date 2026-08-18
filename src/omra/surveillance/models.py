@@ -1,0 +1,1 @@
+"""Surveillance value-model coordinate."""

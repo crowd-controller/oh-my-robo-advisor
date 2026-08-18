@@ -1,0 +1,25 @@
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+__pycache__/
+*.py[cod]
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Credentials and local overrides must never enter version control.
+.env
+.env.*
+!.env.example
+
+# Runtime state belongs to mounted volumes, not Git.
+var/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.log

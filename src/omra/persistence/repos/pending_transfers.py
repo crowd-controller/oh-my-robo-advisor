@@ -1,0 +1,1 @@
+"""Pending-transfer repository coordinate."""

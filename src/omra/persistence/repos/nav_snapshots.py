@@ -1,0 +1,1 @@
+"""NAV-snapshot repository coordinate."""
