@@ -1,0 +1,1 @@
+"""Approval-request repository coordinate."""

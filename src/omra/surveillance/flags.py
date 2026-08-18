@@ -1,0 +1,1 @@
+"""Surveillance flag evaluation coordinate."""

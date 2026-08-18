@@ -1,0 +1,1 @@
+"""Parquet storage coordinate."""

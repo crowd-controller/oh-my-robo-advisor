@@ -1,0 +1,1 @@
+"""Notification-suppression repository coordinate."""

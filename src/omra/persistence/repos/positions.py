@@ -1,0 +1,1 @@
+"""Position repository coordinate."""
