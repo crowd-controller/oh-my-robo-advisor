@@ -1,1 +1,5 @@
-"""Application exception hierarchy; implemented by the domain-model card."""
+"""Application-wide exception hierarchy."""
+
+
+class OmraError(Exception):
+    """Base class for errors that callers may handle at an OMRA boundary."""
