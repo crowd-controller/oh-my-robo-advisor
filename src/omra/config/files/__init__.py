@@ -19,6 +19,7 @@ from omra.config.files.secrets_registry import (
 )
 from omra.config.files.surveillance_map import SurveillanceMapFile, SurvMapEntry
 from omra.config.files.targets import TargetsFile
+from omra.config.files.taxlaw import TaxLawFile, TaxParams, TaxVersion
 from omra.config.files.trids import (
     HttpMethod,
     PriorityBucket,
@@ -57,6 +58,9 @@ __all__ = [
     "SurvMapEntry",
     "SurveillanceMapFile",
     "TargetsFile",
+    "TaxLawFile",
+    "TaxParams",
+    "TaxVersion",
     "TrIdsRaw",
     "UniverseFile",
     "UniverseInstrument",

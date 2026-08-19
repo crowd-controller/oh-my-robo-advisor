@@ -2,6 +2,7 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from omra.core.errors import OmraError
@@ -121,4 +122,18 @@ class UnsupportedInEnvError(ConfigError):
         super().__init__(
             f"unresolved configuration is unsupported in {env}: {', '.join(self.paths)}",
             code="config.unsupported_in_env",
+        )
+
+
+class EffectiveVersionMissing(ConfigError):  # noqa: N818 - canonical design error name
+    """No configuration value is effective on the requested KST date."""
+
+    def __init__(self, kst_date: date, available_from: Iterable[date]) -> None:
+        self.kst_date = kst_date
+        self.available_from = tuple(sorted(set(available_from)))
+        rendered = ", ".join(day.isoformat() for day in self.available_from) or "<none>"
+        super().__init__(
+            f"no effective configuration version for {kst_date.isoformat()} "
+            f"(available effective_from: {rendered})",
+            code="config.effective_version_missing",
         )
