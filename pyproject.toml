@@ -144,6 +144,7 @@ ignore = [
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "datetime.datetime.now".msg = "core.Clock을 주입해 쓴다 (02-domain-model.md §8.1 DD-02-11)"
 "datetime.date.today".msg = "core.Clock을 주입해 쓴다 (02-domain-model.md §8.1 DD-02-11)"
+"asyncio.sleep".msg = "core.Clock.sleep_until을 주입해 쓴다 (02-domain-model.md §8.1 DD-02-21)"
 "time.sleep".msg = "단일 asyncio 루프를 블로킹한다 (01 §1.4)"
 "random.random".msg = "시드 없는 난수는 재현성을 깬다 (16-testing-and-quality.md §11.2)"
 
