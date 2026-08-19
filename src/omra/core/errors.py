@@ -56,3 +56,9 @@ class LotStepError(DomainError):
     """A quantity or lot-step relationship is invalid."""
 
     default_code = "domain.lot_step_invalid"
+
+
+class PersistenceError(OmraError):
+    """Base class for durable storage and audit failures."""
+
+    default_code = "persistence.error"

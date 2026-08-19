@@ -1,0 +1,7 @@
+case_id	direction	payload_json	registered_value	forbidden
+cano-key	req	{"CANO":"DUMMY_ACCOUNT_NUMBER","nested":{"safe":"visible"}}		DUMMY_ACCOUNT_NUMBER
+product-key	res	{"outer":[{"ACNT_PRDT_CD":"DUMMY_PRODUCT_CODE"}]}		DUMMY_PRODUCT_CODE
+normalized-app-secret	req	{"App-Secret":"DUMMY_APP_SECRET"}		DUMMY_APP_SECRET
+authorization-key	res	{"headers":{"Authorization":"Bearer DUMMY_HEADER_TOKEN"}}		DUMMY_HEADER_TOKEN
+registered-string	req	{"note":"prefix-DUMMY_REGISTERED_TOKEN-suffix"}	DUMMY_REGISTERED_TOKEN	DUMMY_REGISTERED_TOKEN
+registered-list	res	{"items":["DUMMY_REGISTERED_ACCOUNT",{"safe":"ok"}]}	DUMMY_REGISTERED_ACCOUNT	DUMMY_REGISTERED_ACCOUNT

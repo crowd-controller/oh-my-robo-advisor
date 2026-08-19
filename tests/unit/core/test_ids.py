@@ -1,8 +1,19 @@
 """Unit contracts for exact instrument identifiers."""
 
+import re
+
 import pytest
 
-from omra.core import IdentifierError, Market, TickRuleId, instrument_key, parse_instrument_key
+from omra.core import (
+    IdentifierError,
+    Market,
+    TickRuleId,
+    instrument_key,
+    new_id,
+    parse_instrument_key,
+)
+
+_ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
 
 
 def test_market_and_tick_rule_values_match_canonical_vocabulary() -> None:
@@ -41,3 +52,14 @@ def test_parse_instrument_key_rejects_every_malformed_shape(key: str) -> None:
 def test_instrument_key_rejects_empty_or_whitespace_symbols(symbol: str) -> None:
     with pytest.raises(IdentifierError):
         instrument_key(Market.NASD, symbol)
+
+
+def test_new_id_is_unique_and_lexicographically_monotonic_for_one_million_issues() -> None:
+    previous = ""
+
+    for _ in range(1_000_000):
+        current = new_id()
+        assert len(current) == 26
+        assert _ULID_PATTERN.fullmatch(current)
+        assert current > previous
+        previous = current

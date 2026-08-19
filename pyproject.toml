@@ -27,6 +27,7 @@ dependencies = [
   "pyarrow>=20,<24",
   "pykrx>=1.0.51,<2",
   "python-telegram-bot>=21,<23",
+  "python-ulid>=4,<5",
   "pyyaml>=6,<7",
   "quantstats>=0.0.77,<1",
   "skfolio>=0.11,<1",

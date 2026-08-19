@@ -2,7 +2,16 @@
 
 from enum import StrEnum
 
+from ulid import ULIDGenerator
+
 from omra.core.errors import IdentifierError
+
+_ULID_GENERATOR = ULIDGenerator()
+
+
+def new_id() -> str:
+    """Return a process-monotonic 26-character ULID."""
+    return str(_ULID_GENERATOR.generate())
 
 
 class Market(StrEnum):
