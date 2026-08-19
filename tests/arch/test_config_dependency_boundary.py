@@ -3,6 +3,8 @@
 import ast
 from pathlib import Path
 
+from omra.config import CATALOG, MissingSecrets, Secrets, SecretSpec, load_secrets
+from omra.config.errors import MissingSecrets as ModuleMissingSecrets
 from omra.config.files import (
     AutoAction,
     EquityRegions,
@@ -71,6 +73,10 @@ from omra.config.files.universe import (
 from omra.config.files.universe import (
     UniverseInstrument as ModuleUniverseInstrument,
 )
+from omra.config.secrets import CATALOG as MODULE_CATALOG
+from omra.config.secrets import Secrets as ModuleSecrets
+from omra.config.secrets import SecretSpec as ModuleSecretSpec
+from omra.config.secrets import load_secrets as module_load_secrets
 
 _CONFIG_ROOT = Path(__file__).resolve().parents[2] / "src" / "omra" / "config"
 _ALLOWED_INTERNAL_ROOTS = frozenset({"omra.config", "omra.core"})
@@ -97,6 +103,14 @@ def test_config_only_imports_config_or_core_inside_omra() -> None:
                 violations.append(f"{path.relative_to(_CONFIG_ROOT)} -> {module}")
 
     assert violations == []
+
+
+def test_secret_loader_public_coordinates_are_stable() -> None:
+    assert CATALOG is MODULE_CATALOG
+    assert MissingSecrets is ModuleMissingSecrets
+    assert SecretSpec is ModuleSecretSpec
+    assert Secrets is ModuleSecrets
+    assert load_secrets is module_load_secrets
 
 
 def test_record_file_public_coordinates_are_stable() -> None:
