@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from omra.core.errors import OmraError
 
 
@@ -27,6 +29,33 @@ class Violation:
             if self.column is not None:
                 location = f"{location}:{self.column}"
         return f"{location} [{self.code}] {self.path}: {self.message}"
+
+
+def _yaml_path(location: tuple[str | int, ...]) -> str:
+    path = ""
+    for part in location:
+        if isinstance(part, int):
+            path = f"{path}[{part}]"
+        else:
+            path = part if not path else f"{path}.{part}"
+    return path or "$"
+
+
+def validation_violations(
+    error: ValidationError,
+    *,
+    source: Path | None = None,
+) -> tuple[Violation, ...]:
+    """Flatten every Pydantic error into the shared deterministic diagnostic form."""
+    return tuple(
+        Violation(
+            code=str(item["type"]),
+            message=str(item["msg"]),
+            path=_yaml_path(tuple(item["loc"])),
+            source=source,
+        )
+        for item in error.errors(include_url=False)
+    )
 
 
 class ConfigError(OmraError):

@@ -8,33 +8,15 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ValidationError
 
-from omra.config.errors import ConfigValidationError, Violation
+from omra.config.errors import (
+    ConfigValidationError,
+    Violation,
+    validation_violations,
+)
 from omra.config.layers import parse_yaml_document, parse_yaml_mapping
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-
-def _yaml_path(location: tuple[str | int, ...]) -> str:
-    path = ""
-    for part in location:
-        if isinstance(part, int):
-            path = f"{path}[{part}]"
-        else:
-            path = part if not path else f"{path}.{part}"
-    return path or "$"
-
-
-def _validation_violations(source: Path, error: ValidationError) -> tuple[Violation, ...]:
-    return tuple(
-        Violation(
-            code=str(item["type"]),
-            message=str(item["msg"]),
-            path=_yaml_path(tuple(item["loc"])),
-            source=source,
-        )
-        for item in error.errors(include_url=False)
-    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +70,7 @@ class RecordFile[RecordT: BaseModel]:
         try:
             data = model.model_validate(values)
         except ValidationError as error:
-            raise ConfigValidationError(_validation_violations(path, error)) from error
+            raise ConfigValidationError(validation_violations(error, source=path)) from error
 
         return cls(
             path=path,
