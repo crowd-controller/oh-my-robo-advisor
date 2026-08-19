@@ -3,6 +3,7 @@
 import os
 from dataclasses import FrozenInstanceError
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -37,9 +38,28 @@ def _write_yaml(path: Path, values: object) -> None:
 
 def _app_values(*, env: str = "dry_run") -> dict[str, object]:
     values: dict[str, object] = {name: {} for name in AppConfig.model_fields}
-    values["run"] = {"env": env}
-    values["accounts"] = []
-    values["backtest"] = {"snapshot": {}}
+    run: dict[str, object] = {"env": env}
+    if env == "live":
+        run["live_confirmation"] = "1234-I-UNDERSTAND"
+    values["run"] = run
+    values["accounts"] = (
+        []
+        if env == "dry_run"
+        else [
+            {
+                "id": "general01",
+                "type": "general",
+                "broker": "KIS",
+                "mode": "AUTO",
+            }
+        ]
+    )
+    values["backtest"] = {
+        "snapshot": {
+            "tolerance_pct": "0.05",
+            "absolute_floor": {"sharpe": "0", "max_mdd": "-1"},
+        }
+    }
     return values
 
 
@@ -174,8 +194,8 @@ def _config_dir(
                 "version": 1,
                 "as_of": "2026-08-01",
                 "risk_level": 6,
-                "weights": {},
-                "cash": "1",
+                "weights": {"KRX:360750": "0.99"},
+                "cash": "0.01",
             },
         )
     if questions:
@@ -226,7 +246,7 @@ def test_optional_records_are_loaded_only_when_present(tmp_path: Path) -> None:
     bundle = load_and_validate_config(config_dir, clock=_clock())
 
     assert bundle.targets is not None
-    assert bundle.targets.cash == 1
+    assert bundle.targets.cash == Decimal("0.01")
     assert bundle.questions.questions == ()
     source_names = {source.path.name for source in bundle.sources}
     assert "targets.yaml" in source_names
@@ -357,3 +377,44 @@ def test_bundle_and_loaded_sources_are_frozen(tmp_path: Path) -> None:
     source_attribute = "kind"
     with pytest.raises(FrozenInstanceError):
         setattr(bundle.sources[0], source_attribute, "changed")
+
+
+def test_loader_aggregates_static_constraint_errors_in_id_order(tmp_path: Path) -> None:
+    config_dir = _config_dir(tmp_path)
+    values = _app_values()
+    values["band"] = {"abs": "0.06"}
+    values["ws"] = {"subscription_cap": 39}
+    _write_yaml(config_dir / "config.yaml", values)
+
+    with pytest.raises(ConfigValidationError) as raised:
+        load_and_validate_config(config_dir, clock=_clock())
+
+    assert [violation.code for violation in raised.value.violations] == ["C-1", "C-13"]
+
+
+def test_loader_warns_for_c27_without_rejecting_the_bundle(tmp_path: Path) -> None:
+    config_dir = _config_dir(tmp_path)
+    _write_yaml(
+        config_dir / "secrets_registry.yaml",
+        [
+            {
+                "name": "KIS_APP_KEY",
+                "issued_at": "2026-01-01",
+                "expires_at": "2027-01-01",
+                "tier": 1,
+                "auto_action": "pause_all_d7_safe_mode_d3",
+            },
+            {
+                "name": "UPBIT_ACCESS",
+                "issued_at": "2026-02-01",
+                "expires_at": "2027-02-01",
+                "tier": 1,
+                "auto_action": "pause_all_d7_safe_mode_d3",
+            },
+        ],
+    )
+
+    with pytest.warns(RuntimeWarning, match="C-27"):
+        bundle = load_and_validate_config(config_dir, clock=_clock())
+
+    assert len(bundle.registry.entries) == 2
