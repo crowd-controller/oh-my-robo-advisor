@@ -15,6 +15,9 @@ from omra.config.errors import ConfigError, MissingSecrets
 from omra.config.files.secrets_registry import SecretTier
 from omra.config.schema.run import ExecEnv
 
+SecretSurface = Literal["app", "litestream", "tools"]
+CredentialSurface = Literal["app", "tools"]
+
 
 @dataclass(frozen=True, slots=True)
 class SecretSpec:
@@ -22,7 +25,7 @@ class SecretSpec:
 
     name: str
     required_in: frozenset[ExecEnv]
-    surface: Literal["app", "litestream", "tools"]
+    surface: SecretSurface
     tier: SecretTier
     registry_tracked: bool
 
@@ -148,6 +151,22 @@ CATALOG: Final[tuple[SecretSpec, ...]] = (
 
 _CATALOG_NAMES: Final[frozenset[str]] = frozenset(spec.name for spec in CATALOG)
 _EXPECTED_ENV_MODE: Final = 0o600
+_TELEGRAM_SECRET_NAMES: Final[tuple[str, ...]] = (
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+)
+_SMTP_SECRET_NAMES: Final[tuple[str, ...]] = (
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASS",
+)
+_NOTIFICATION_SECRET_NAMES: Final[frozenset[str]] = frozenset(
+    (*_TELEGRAM_SECRET_NAMES, *_SMTP_SECRET_NAMES)
+)
+_TOOLS_FORBIDDEN_SECRET_NAMES: Final[tuple[str, ...]] = tuple(
+    spec.name for spec in CATALOG if spec.surface == "app" and spec.name != "ANTHROPIC_API_KEY"
+)
 
 
 class Secrets(BaseSettings):
@@ -261,7 +280,7 @@ class Secrets(BaseSettings):
     def require(
         self,
         env: ExecEnv,
-        surface: Literal["app", "litestream", "tools"],
+        surface: SecretSurface,
     ) -> None:
         """Raise with every required secret name absent for an environment and surface."""
         missing = tuple(
@@ -332,4 +351,53 @@ def load_secrets(env_files: Sequence[Path]) -> Secrets:
     return Secrets(_env_file=paths, _env_file_encoding="utf-8")
 
 
-__all__ = ["CATALOG", "SecretSpec", "Secrets", "load_secrets"]
+def has_telegram(secrets: Secrets) -> bool:
+    """Return whether the complete Telegram notification channel is present."""
+    return all(secrets._is_present(name) for name in _TELEGRAM_SECRET_NAMES)
+
+
+def has_smtp(secrets: Secrets) -> bool:
+    """Return whether the complete SMTP notification channel is present."""
+    return all(secrets._is_present(name) for name in _SMTP_SECRET_NAMES)
+
+
+def check_credential_placement(
+    surface: CredentialSurface,
+    env: ExecEnv,
+    secrets: Secrets,
+) -> None:
+    """Enforce the SC-13 startup credential boundary without exposing values."""
+    if surface == "app":
+        try:
+            secrets.require(env, "app")
+        except MissingSecrets as error:
+            # CATALOG tracks channel members individually; SC-13 accepts either
+            # complete channel and reports non-channel requirements first.
+            missing_non_channel = tuple(
+                name for name in error.names if name not in _NOTIFICATION_SECRET_NAMES
+            )
+            if missing_non_channel:
+                raise MissingSecrets(missing_non_channel) from None
+
+        if not (has_telegram(secrets) or has_smtp(secrets)):
+            raise MissingSecrets(("TELEGRAM_BOT_TOKEN|SMTP_*",))
+        return
+
+    if surface == "tools":
+        secrets.assert_absent(_TOOLS_FORBIDDEN_SECRET_NAMES)
+        return
+
+    raise ValueError(f"unsupported credential surface: {surface!r}")
+
+
+__all__ = [
+    "CATALOG",
+    "CredentialSurface",
+    "SecretSpec",
+    "SecretSurface",
+    "Secrets",
+    "check_credential_placement",
+    "has_smtp",
+    "has_telegram",
+    "load_secrets",
+]

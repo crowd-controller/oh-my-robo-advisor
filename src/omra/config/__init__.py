@@ -23,7 +23,17 @@ from omra.config.layers import (
     resolve_exec_env,
 )
 from omra.config.schema.run import ExecEnv, RunCfg
-from omra.config.secrets import CATALOG, Secrets, SecretSpec, load_secrets
+from omra.config.secrets import (
+    CATALOG,
+    CredentialSurface,
+    Secrets,
+    SecretSpec,
+    SecretSurface,
+    check_credential_placement,
+    has_smtp,
+    has_telegram,
+    load_secrets,
+)
 from omra.config.settings import AppConfig
 
 __all__ = [
@@ -34,6 +44,7 @@ __all__ = [
     "ConfigSyntaxError",
     "ConfigTypeConflict",
     "ConfigValidationError",
+    "CredentialSurface",
     "ExecEnv",
     "LayeredMapping",
     "LoadedLayer",
@@ -41,11 +52,15 @@ __all__ = [
     "Override",
     "RunCfg",
     "SecretSpec",
+    "SecretSurface",
     "Secrets",
     "UnknownOverrideError",
     "Violation",
     "apply_overrides",
+    "check_credential_placement",
     "deep_merge",
+    "has_smtp",
+    "has_telegram",
     "load_layered_mapping",
     "load_secrets",
     "load_yaml_mapping",
