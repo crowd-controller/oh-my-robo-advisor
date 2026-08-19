@@ -10,6 +10,7 @@ from omra.config.files.goals import (
 )
 from omra.config.files.income import ExternalIncome, ExternalIncomeFile
 from omra.config.files.market_weights import EquityRegions, MarketWeightsFile
+from omra.config.files.open_questions import OpenQuestion, OpenQuestionsFile
 from omra.config.files.schedules import ExternalSchedule, ExternalSchedulesFile
 from omra.config.files.secrets_registry import (
     AutoAction,
@@ -47,6 +48,8 @@ __all__ = [
     "GoalsFile",
     "HttpMethod",
     "MarketWeightsFile",
+    "OpenQuestion",
+    "OpenQuestionsFile",
     "PriorityBucket",
     "RecordFile",
     "RestBaseUrls",
