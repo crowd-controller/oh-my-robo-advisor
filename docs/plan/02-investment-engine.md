@@ -1189,12 +1189,13 @@ CAGR, 연변동성, Sharpe, Sortino, MDD, Calmar, 월간 승률, 세전/세후 �
 - 주기: 분기 1회 + 시장 급변(월간 −10% 초과) 시 임시. 매매 경로와 완전 분리(모니터링 전용).
 - **인출기 — Guyton-Klinger 가드레일**: 초기 인출률 4.0%, 연 인플레 연동. 현재 인출률이 초기 대비 +20% 이탈 → 당해 인출 10% 삭감, −20% → 10% 증액, 실질수익 음(−)의 해는 증액 스킵. 시뮬에도 동일 규칙 내장(고정 인출 가정의 실패율 과대평가 제거). 인출은 자동 매도가 아니라 월간 플랜 승인 후 집행.
 
-## 부록 A: 기본 파라미터 총괄표 (config 키)
+## 부록 A: 기본 파라미터 총괄표 (config 키 + `tax.yaml` 법령값)
 
-> **키 이름 정본 규칙 (3줄)**
+> **키 이름 정본 규칙 (4줄)**
 > 1. **전체 스키마는 4개 블록의 합집합**이다 — 이 표(엔진·집행·세금) + 03 부록 A(`protections.*`·`safe_mode.*`·`presence.*`·`alerts.*`·`execution.*`) + 06 부록 C(`ws.*`·`quote.*`·`fx.*`·`guard.*`·`realtime.*`·`etf.premium_gate.*`·`surveillance.*`) + 07 부록 D(`research.*`·`labs.*`). **자기 블록에만 있는 키는 그 문서가 이름까지 정본**이다.
 > 2. **두 곳 이상에 나타나는 키는 이 표의 이름을 따른다.** 이름이 갈리면(`mvo.turnover_gamma` vs `mvo.turnover_penalty_gamma`, `safemode.*` vs `safe_mode.*`) 설정 로더와 CI 스키마 검증이 어느 쪽을 구현할지 결정할 수 없다.
 > 3. **CI 화이트리스트의 생성원은 이 4개 블록**이며, CI는 (ⓐ 블록 간 키 이름 중복·불일치 0건 ⓑ **07 §7.1 `tuning_space` 표의 키 ⊆ 4블록 합집합**)을 단정한다. 값 자체가 아니라 **문서에서 추출한 키 목록**을 검사한다 — `labs.tuning_space`의 런타임 값은 챌린저층 착수 전까지 `[]`이기 때문이다.
+> 4. 첫 열이 `tax.yaml params.*`인 행은 `AppConfig` 경로가 아니라 §5.5의 effective-date 법령값이다. 과거 별칭 `tax.deduction`·`tax.isa_free_limit`·`tax.crypto_tax_enabled`·`waterfall.pension_deduct_cap_*`는 [DD-10-16]에 따라 아래 실제 `TaxParams` 좌표로 해석하며 config 입력으로 받지 않는다.
 
 | 키 | 기본값 | 근거 |
 |---|---|---|
@@ -1241,15 +1242,18 @@ CAGR, 연변동성, Sharpe, Sortino, MDD, Calmar, 월간 승률, 세전/세후 �
 | `policy.change_budget.logic_per_year` | 2 | 로직/코드 (PR 머지) |
 | `policy.auto_threshold_pp` / `.reject_threshold_pp` | 8%p / 20%p | 목표비중 자동 승인·자동 거부 (§3.3) |
 | `canary.targets` / `canary.methodology` | 1/3→2/3→1 × 5거래일 / 0.25→0.50→1.00 × 20거래일 | 코드 1개 + 대상별 파라미터 |
-| `tax.harvest_start` / `tax.deduction` | 11/25 / 250만원 | T+1, 마감 D*−2 |
+| `tax.harvest_start` | 11/25 | T+1, 마감 D*−2 |
+| `tax.yaml params.overseas_cg_deduction_krw` | 250만원 | 해외주식 양도소득 기본공제 — §5.5 effective-date 법령값 |
 | `tax.income_alerts.api` | 1,000(건보) / 1,200 / 1,600 / 1,800만원 | 금소세 2,000만 + 건보 임계 (과표기준가 수집 성공 시) |
 | `tax.income_alerts.fallback` | 1,000 / 1,400 / 1,800 / 1,900만원 | 과표기준가 폴백(실차익 과대추정) 시 티어별 대응 §5.3 |
 | `tax.basis_price_source` | `api` \| `fallback` | 위 두 자식 키 중 어느 집합을 쓸지 선택. SP-C1 결과로 확정. **부모 `tax.income_alerts`는 스칼라 목록이 아니라 mapping**이다 |
-| `tax.isa_free_limit` / `.isa_usage_alert` | 200만원(서민형 400) / 70% | ISA 비과세 한도 — **계약기간 누적(contract-to-date)**, YTD 아님 |
+| `tax.yaml params.isa_free_limit_krw` | 200만원(서민형 400) | ISA 비과세 한도 — §5.5 effective-date 법령값 |
+| `tax.isa_usage_alert` | 70% | ISA 비과세 한도 **계약기간 누적(contract-to-date)** 경고, YTD 아님 |
 | `tax.isa_contract_start_date` | (사용자 입력) | 누적 기준일. 만기·해지·재가입 시에만 리셋 §5.2 |
 | `tax.isa_usage_opening_amount` | **(사용자 입력, 기본 `null`)** | 계약 개시일~시스템 도입일 사이 ISA 계좌 내 누적 실현 순이익. 증권사 거래명세로 1회 입력. **`null`이면 소진률 `unknown`** §5.2 |
 | `tax.isa_usage_opening_as_of` | (사용자 입력) | 위 값의 기준일. **이 날짜 이후 실현분만 시스템이 누적한다** |
 | `tax.harvest_rebuy_buffer_pct` | **0.005** | 하베스팅 재매수 금액 버퍼(매도 예상 대금 × (1 − 이 값)) §5.1.2 |
+| `tax.yaml params.crypto_tax_enabled` | `false` | 가상자산 과세 시행 유예 훅 — §5.5 effective-date 법령값 |
 | `waterfall.transfer_reserve_expiry_days` | **7** | E5 절세계좌 이체 지시 예약(`pending_transfer_reserve`) 만료 §4.2 |
 | `backtest.account_model` | **`single`** | 백테스트 계좌 모델. 단일 일반위탁 계좌. `multi`는 M8 이후 §8.1 |
 | `satellite.momentum.pair` | **`VOO / VXUS`** | 상대모멘텀 페어. 둘 다 §2.2 1순위 §6.1 |
@@ -1257,7 +1261,7 @@ CAGR, 연변동성, Sharpe, Sortino, MDD, Calmar, 월간 승률, 세전/세후 �
 | `satellite.momentum.dd_basis` | **`sleeve_krw_peak_to_trough`** | DD 정의(슬리브 평가액 KRW, 일간 종가) §6.1 |
 | `satellite.momentum.turnover_cap_annual` | **200%** | 초과 시 잔여 전환을 익월 이월 + warning §6.1 |
 | `waterfall` | 연금600 → IRP300 → ISA2,000 → 일반 (`fill_pension_to_limit` 옵션) | 납입 1,800만/공제 900만 구분 |
-| `waterfall.pension_deduct_cap_total` / `.pension_deduct_cap_savings` | 9,000,000 / 6,000,000 | **합산 900만 결합제약** — 계좌별 독립 차감 금지 §1.3.2 |
+| `tax.yaml params.pension_deduct_cap_total_krw` / `.pension_deduct_cap_savings_krw` | 9,000,000 / 6,000,000 | **합산 900만 결합제약** — §5.5 effective-date 법령값, 계좌별 독립 차감 금지 §1.3.2 |
 | `waterfall.gap_check_date` / `.reminders` | 11/01 / D-12, D-5, D-1 | `waterfall_gap_check` 잡 §1.3.2 |
 | `momentum.lookbacks` | {3,6,9,12}개월 앙상블 | 과최적화 방어 |
 | `crypto.target` / `crypto.cap` | 3% / 10%, BTC70:ETH30 | |

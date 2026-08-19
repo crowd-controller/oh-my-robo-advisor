@@ -31,7 +31,6 @@ def test_tax_safety_and_observation_defaults_match_the_canonical_tables() -> Non
     assert _dump() == {
         "tax": {
             "harvest_start": "11-25",
-            "deduction": 2_500_000,
             "income_alerts": {
                 "api": {
                     "health": 10_000_000,
@@ -47,7 +46,6 @@ def test_tax_safety_and_observation_defaults_match_the_canonical_tables() -> Non
                 },
             },
             "basis_price_source": "fallback",
-            "isa_free_limit": 2_000_000,
             "isa_usage_alert": "0.70",
             "isa_contract_start_date": None,
             "isa_usage_opening_amount": None,
@@ -55,13 +53,10 @@ def test_tax_safety_and_observation_defaults_match_the_canonical_tables() -> Non
             "harvest_rebuy_buffer_pct": "0.005",
             "health_insurance_status": "regional",
             "user_marginal_credit_rate": "0.132",
-            "crypto_tax_enabled": False,
             "harvest_auto_enabled": False,
         },
         "waterfall": {
             "fill_pension_to_limit": False,
-            "pension_deduct_cap_total": 9_000_000,
-            "pension_deduct_cap_savings": 6_000_000,
             "gap_check_date": "11-01",
             "reminders": ["12-08", "12-15", "12-19"],
             "transfer_reserve_expiry_days": 7,

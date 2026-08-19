@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from omra.config import ConfigValidationError, EffectiveVersionMissing, VersionedFile
 from omra.config.files import RecordFile, TaxLawFile, TaxParams, TaxVersion
+from omra.config.schema.taxcfg import TaxCfg, WaterfallCfg
 
 _ROOT = Path(__file__).resolve().parents[3]
 _SEED = _ROOT / "config" / "tax.yaml"
@@ -31,10 +32,8 @@ _LAW_FIELDS = (*_DECIMAL_FIELDS, "crypto_tax_enabled")
 _OPERATING_FIELDS = frozenset(
     {
         "harvest_start",
-        "deduction",
         "income_alerts",
         "basis_price_source",
-        "isa_free_limit",
         "isa_usage_alert",
         "isa_contract_start_date",
         "isa_usage_opening_amount",
@@ -47,6 +46,15 @@ _OPERATING_FIELDS = frozenset(
         "gap_check_date",
         "reminders",
         "transfer_reserve_expiry_days",
+    }
+)
+_RETIRED_APP_ALIASES = frozenset(
+    {
+        "deduction",
+        "isa_free_limit",
+        "crypto_tax_enabled",
+        "pension_deduct_cap_total",
+        "pension_deduct_cap_savings",
     }
 )
 
@@ -142,6 +150,33 @@ def test_tax_params_fields_are_law_only_and_match_the_consumer_contract() -> Non
     assert _OPERATING_FIELDS.isdisjoint(TaxParams.model_fields)
     assert tuple(TaxVersion.model_fields) == ("effective_from", "note", "params")
     assert tuple(TaxLawFile.model_fields) == ("schema_version", "versions")
+
+
+def test_app_tax_models_contain_only_operating_values_and_user_inputs() -> None:
+    assert tuple(TaxCfg.model_fields) == (
+        "harvest_start",
+        "income_alerts",
+        "basis_price_source",
+        "isa_usage_alert",
+        "isa_contract_start_date",
+        "isa_usage_opening_amount",
+        "isa_usage_opening_as_of",
+        "harvest_rebuy_buffer_pct",
+        "health_insurance_status",
+        "user_marginal_credit_rate",
+        "harvest_auto_enabled",
+    )
+    assert tuple(WaterfallCfg.model_fields) == (
+        "fill_pension_to_limit",
+        "gap_check_date",
+        "reminders",
+        "transfer_reserve_expiry_days",
+    )
+
+    app_fields = frozenset((*TaxCfg.model_fields, *WaterfallCfg.model_fields))
+    assert app_fields == _OPERATING_FIELDS
+    assert app_fields.isdisjoint(_RETIRED_APP_ALIASES)
+    assert _RETIRED_APP_ALIASES & frozenset(TaxParams.model_fields) == {"crypto_tax_enabled"}
 
 
 def test_tax_params_defaults_are_the_canonical_law_values() -> None:

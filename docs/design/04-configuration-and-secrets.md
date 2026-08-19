@@ -272,16 +272,22 @@ class ConfigFingerprint:
 
 ### 4.1 키 이름 정본 규칙 (02 부록 A 서문 그대로)
 
-1. 전체 스키마 = **4개 블록의 합집합**: 02 부록 A(엔진·집행·세금) + 03 부록 A(`protections.*`·`safe_mode.*`·`presence.*`·`alerts.*`·`execution.*`) + 06 부록 C(`ws.*`·`quote.*`·`fx.*`·`guard.*`·`realtime.*`·`etf.premium_gate.*`·`surveillance.*`) + 07 부록 D(`research.*`·`labs.*`). 자기 블록에만 있는 키는 그 문서가 이름까지 정본.
+1. 전체 스키마 = **4개 블록의 config-key 합집합**: 02 부록 A(엔진·집행·세금, 첫 열이 `tax.yaml params.*`인 법령값 행 제외) + 03 부록 A(`protections.*`·`safe_mode.*`·`presence.*`·`alerts.*`·`execution.*`) + 06 부록 C(`ws.*`·`quote.*`·`fx.*`·`guard.*`·`realtime.*`·`etf.premium_gate.*`·`surveillance.*`) + 07 부록 D(`research.*`·`labs.*`). 자기 블록에만 있는 키는 그 문서가 이름까지 정본.
 2. 두 곳 이상에 나타나는 키는 **02 부록 A의 이름**을 따른다(`safe_mode.*`가 정본 접두사, `safemode.*`는 존재하지 않는다).
-3. CI 화이트리스트의 생성원은 이 4블록이며 CI가 ⓐ 블록 간 키 중복·불일치 0건 ⓑ 07 §7.1 `tuning_space` 표의 키 ⊆ 4블록 합집합을 단정한다(§9.2).
+3. CI 화이트리스트의 생성원은 이 4블록의 config-key 행이며 CI가 ⓐ 블록 간 키 중복·불일치 0건 ⓑ 07 §7.1 `tuning_space` 표의 키 ⊆ 4블록 합집합을 단정한다(§9.2). `tax.yaml params.*` 행은 별도로 `TaxParams`와 대조한다.
 
 **본 설계는 여기에 규칙 4를 더한다.**
 
 > **[DD-04-4] 규칙 4 — `AppConfig` 모델의 키 집합 == 4블록 합집합 ∪ 등재된 신규 키**
-> - 결정: CI가 (ⓒ **4블록에서 추출한 키 집합 ⊆ `AppConfig` 필드 경로 집합**) (ⓓ **`AppConfig`에만 있고 등재처가 없는 키 = 0건**)을 추가로 단정한다. ⓓ의 "등재처"는 넷이다 — 4블록 / §4.3(`run.*`·`accounts[]`) / §4.4 신규 키 표 / **4블록이 구조값으로만 준 키의 하위 필드**(`order.reprice.{interval_min,max_count}`·`cov.monitor.{lam,days}`·`guard.move_guard.*`·`crypto.mix`·`tax.income_alerts.*` 등 — 부모 키가 4블록에 있으면 하위 필드명은 §4.2 모델이 이름 정본).
+> - 결정: CI가 (ⓒ **4블록에서 추출한 config 키 집합 ⊆ `AppConfig` 필드 경로 집합**) (ⓓ **`AppConfig`에만 있고 등재처가 없는 키 = 0건**)을 추가로 단정한다. 02 부록 A에서 `tax.yaml params.*`로 명시한 법령값은 ⓒ의 입력이 아니며 `TaxParams` 필드와 별도로 대조한다. ⓓ의 "등재처"는 넷이다 — 4블록 / §4.3(`run.*`·`accounts[]`) / §4.4 신규 키 표 / **4블록이 구조값으로만 준 키의 하위 필드**(`order.reprice.{interval_min,max_count}`·`cov.monitor.{lam,days}`·`guard.move_guard.*`·`crypto.mix`·`tax.income_alerts.*` 등 — 부모 키가 4블록에 있으면 하위 필드명은 §4.2 모델이 이름 정본).
 > - 근거: 02 부록 A 규칙 3은 "문서 ↔ 문서" 정합만 검사한다. 문서에 있는데 모델에 없으면 그 키는 YAML에 적어도 무시되고(pydantic `extra="forbid"`면 기동 거부지만, 그 전에 아무도 그 키를 쓸 수 없다), 모델에만 있으면 문서화되지 않은 숨은 파라미터다. 무인 운용에서 후자가 더 위험하다.
 > - 계획 문서와의 관계: 02 부록 A 규칙 3의 확장. 충돌 없음.
+
+> **[DD-04-21] 세법 법령값은 `tax.yaml` 단일 정본**
+> - 결정: [DD-10-16]을 수용해 `TaxCfg`의 `deduction`·`isa_free_limit`·`crypto_tax_enabled`와 `WaterfallCfg`의 `pension_deduct_cap_total`·`pension_deduct_cap_savings`를 제거한다. 법령값은 Clock으로 선택한 `TaxParams`에서만 읽고, 과거 config·`OMRA__` 경로는 strict unknown/extra 입력으로 거부한다.
+> - C-29는 비교할 교집합이 사라져 폐기하며 번호를 다른 규칙에 재사용하지 않는다. `ConfigConflictError`는 계층 간 `run.env` 충돌 등 기존 용도로 유지한다.
+> - 근거: 02 §5.5는 세율·공제·한도를 effective-date `tax.yaml`로 관리하라고 명시한다. 복제값을 비교하는 것보다 두 번째 입력 경로를 없애야 한쪽만 갱신되는 실패가 구조적으로 불가능하다.
+> - 계획 문서와의 관계: 02 부록 A의 과거 별칭을 실제 `tax.yaml params.*` 좌표로 명시한 규칙 4를 구현한다. 충돌 없음.
 
 ### 4.2 루트 모델과 블록 트리
 
@@ -640,14 +646,12 @@ class LabsG2Cfg(BaseModel, frozen=True):
 `labs.tuning_space`의 원소는 **`AppConfig` 필드 경로 문자열**이며 모델 검증 시 실재 경로인지 확인한다. 07 §7.1 제외 목록(`band.*` 전체·`safe_mode.*`·`protections.*`·`execution.max_open_orders`·`crypto.*`·`satellite.*`·`bl.delta_mkt`·`mvo.lambda_risk_bounds`)은 **런타임 검증으로도 거부**한다 — CI가 문서 대조만 하면 사람이 YAML에 직접 적은 순간을 못 잡는다.
 
 ```python
-# schema/taxcfg.py — 소비 모델 TaxParams 는 10-tax-engine.md §3.1 소유. 여기는 config.yaml 쪽 키.
+# schema/taxcfg.py — TaxParams 법령값은 10 §3.1·tax.yaml만 소유. 여기는 운영 키·사용자 입력.
 class TaxCfg(BaseModel, frozen=True):
-    # ★ 키 이름은 02 부록 A 표기 그대로 — `_krw` 접미를 임의로 붙이지 않는다(§4.1 규칙 1)
+    # 법령값 별칭은 두지 않는다([DD-04-21]).
     harvest_start: str = "11-25"                       # MM-DD
-    deduction: int = 2_500_000                         # [→ 02 부록 A `tax.deduction`]
     income_alerts: IncomeAlertSets                     # api / fallback 두 집합 (mapping)
     basis_price_source: Literal["api", "fallback"] = "fallback"   # SP-C1 종속
-    isa_free_limit: int = 2_000_000                    # 서민형 400만은 사용자가 교체
     isa_usage_alert: Decimal = Dec("0.70")
     isa_contract_start_date: date | None = None
     isa_usage_opening_amount: int | None = None        # null → 소진률 unknown (02 §5.2)
@@ -655,18 +659,17 @@ class TaxCfg(BaseModel, frozen=True):
     harvest_rebuy_buffer_pct: Decimal = Dec("0.005")
     health_insurance_status: Literal["employee","regional","dependent"] = "regional"  # [DD-10-10]
     user_marginal_credit_rate: Decimal = Dec("0.132")  # [DD-10-7] 보수적 하한
-    crypto_tax_enabled: bool = False                   # 가상자산 과세 훅 (02 §7)
     harvest_auto_enabled: bool = False                 # [→ 10 [DD-10-14]] 하베스팅 자동 실행 승격
                                                        #   false = 제안·승인 경로만 (00 §3.2 T3)
 
 class WaterfallCfg(BaseModel, frozen=True):
     fill_pension_to_limit: bool = False
-    pension_deduct_cap_total: int = 9_000_000
-    pension_deduct_cap_savings: int = 6_000_000
     gap_check_date: str = "11-01"
     reminders: tuple[str, ...] = ("12-08", "12-15", "12-19")   # D-12 / D-5 / D-1
     transfer_reserve_expiry_days: int = 7
 ```
+
+`tax.deduction`·`tax.isa_free_limit`·`tax.crypto_tax_enabled`·`waterfall.pension_deduct_cap_*`는 config 키가 아니다. 각각 `tax.yaml`의 `overseas_cg_deduction_krw`·`isa_free_limit_krw`·`crypto_tax_enabled`·`pension_deduct_cap_*_krw`를 가리키며, 유효 버전 선택은 §6.2의 Clock 경계를 따른다.
 
 `tax.income_alerts`는 **스칼라 목록이 아니라 mapping**이다(02 부록 A 명시). 두 집합의 값은 02 §5.3 표 그대로: `api = {health: 1000만, info: 1200만, warn: 1600만, soft_stop: 1800만}`, `fallback = {health: 1000만, info: 1400만, warn: 1800만, soft_stop: 1900만}`.
 
@@ -893,7 +896,7 @@ def check_all(bundle: ConfigBundle) -> list[ConstraintViolation]:
 | C-26 | `external_schedules[].amount_tolerance_krw > 0` | 03 §1.3.1 "0 금지" |
 | C-27 | `secrets_registry`의 tier-1 항목 2건(KIS 실전·업비트)의 `issued_at` 간격 ≥ `secrets.issue_spacing_days`(180) | 01 §6.2 발급일 분산 규칙 — **위반은 warning**(§8.5) |
 | C-28 | `surveillance.yaml`의 `risk_type` 집합 ⊇ 06 §5.1 카탈로그 7종(M9 조건부 2종은 선택) | 06 §5.1 |
-| C-29 | `config.yaml`의 `tax.*`·`waterfall.*` 중 `tax.yaml` 유효 버전에도 존재하는 키는 **값이 일치**해야 한다(불일치 → `ConfigConflictError`) | 02 §5.5(세율·공제·한도는 `tax.yaml`) vs 02 부록 A(같은 값의 config 키). **이중 출처의 잠정 봉인 — §14-15** |
+| C-29 | **폐기 — ID 재사용 금지.** [DD-04-21]이 법령값의 config 별칭을 제거해 비교할 교집합 자체가 없다 | 02 §5.5, 10 [DD-10-16]. 이전의 `ConfigConflictError` 비교안보다 단일 출처가 강한 불변식 |
 | C-30 | `sum(jobs.planner.steps.*) ≤ 600` | 12 §5.2 [DD-12-3] 소프트 예산 합 ≤ `daily_planner` 하드 예산 |
 | C-31 | `band.restore_mode == "destination"` → `band.restore_rho is not None`이고 `∈ (0, 1]` / `== "fraction"` → `restore_rho is None` | 07 [DD-07-11] (두 경로의 파라미터가 섞이면 어느 규칙이 돌았는지 사후에 알 수 없다) |
 | C-32 | `backtest.costs.*`가 **전부 0이면 거부** | 15 §5.2 `_reject_zero`("거래비용 0 백테스트는 증거가 아니다" — 05 §10.3, 07 §4.4 HR-2) |
@@ -1732,7 +1735,8 @@ def overlapping_expiries(registry: SecretsRegistryFile,
 # tests/arch/test_config_keys.py (구현 소유: 16-testing-and-quality.md, 추출기는 config 패키지)
 def extract_doc_keys() -> dict[str, set[str]]:
     """docs/plan 의 4블록에서 키 경로를 추출한다:
-       02 부록 A  — 표의 첫 열 `키` (슬래시 분리 표기는 개별 키로 전개)
+       02 부록 A  — 표의 첫 열 `키` 중 config-key 행
+                     (`tax.yaml params.*` 법령값 행은 TaxParams 대조 집합으로 분리)
        03 부록 A  — YAML 코드블록의 리프 경로
        06 부록 C  — 〃
        07 부록 D  — 〃
@@ -1740,11 +1744,12 @@ def extract_doc_keys() -> dict[str, set[str]]:
 
 def test_no_cross_block_conflict():   ...   # ⓐ 블록 간 키 중복·불일치 0건
 def test_tuning_space_subset():       ...   # ⓑ 07 §7.1 표의 키 ⊆ 합집합
-def test_docs_subset_of_model():      ...   # ⓒ 합집합 ⊆ AppConfig 필드 경로  [DD-04-4]
+def test_docs_subset_of_model():      ...   # ⓒ config-key 합집합 ⊆ AppConfig 필드 경로
+def test_tax_law_docs_match_model():  ...   # tax.yaml 법령 키 == TaxParams 필드
 def test_model_subset_of_docs_plus_registry(): ...  # ⓓ 모델 전용 키 = §4.4 표에 등재된 것뿐
 ```
 
-**값이 아니라 키 목록을 검사한다**(02 부록 A 규칙 3). `labs.tuning_space`의 런타임 값은 챌린저층 착수 전까지 `[]`이므로 값 대조는 성립하지 않는다.
+**값이 아니라 키 목록을 검사한다**(02 부록 A 규칙 3). config-key 집합은 `AppConfig`에, `tax.yaml params.*` 집합은 `TaxParams`에 각각 대조한다. `labs.tuning_space`의 런타임 값은 챌린저층 착수 전까지 `[]`이므로 값 대조는 성립하지 않는다.
 
 ### 9.3 HR 키 변경의 취급
 
@@ -1819,7 +1824,7 @@ class UnsupportedInEnvError(ConfigError): ...     # 미확정 TR ID로 live 기�
 | V4-4 | env 값 JSON 파싱: `true`/`3`/`["a"]`/`null`/`"문자열"` 5형 왕복 | 단위 |
 | V4-5 | 2패스 env 결정: 오버레이가 `run.env`를 뒤집으면 `ConfigConflictError` | 단위 |
 | V4-6 | `extra="forbid"`: `config.yaml`에 오타 키 1개 → 기동 거부 + 오류 메시지에 키 경로 | 단위 |
-| V4-7 | 상호 제약 C-1~C-37 각각에 대해 위반 케이스 1개씩 → 정확히 그 ID만 보고 | 표 기반 |
+| V4-7 | bundle-resident 상호 제약(C-1·C-2·C-4~C-28·C-30~C-37) 각각에 대해 위반 케이스 1개씩 → 정확히 그 ID만 보고. C-3은 DB 런타임, C-21의 시크릿 대조는 별도 경계, C-29는 폐기 | 표 기반 |
 | V4-8 | `guard.oneway: false`를 YAML에 적으면 타입 오류(`Literal[True]`) | 단위 |
 | V4-9 | 4블록 키 화이트리스트 ⓐⓑⓒⓓ 전부 green | 아키텍처 |
 | V4-10 | `AppConfig` 모델에 `SecretSpec` 이름과 겹치는 경로 0건(`SecretInConfigError` 미발생) | 아키텍처 |
@@ -1848,6 +1853,7 @@ class UnsupportedInEnvError(ConfigError): ...     # 미확정 TR ID로 live 기�
 | V4-33 | `AppConfig`에 `glide` 블록이 **존재하지 않음**이고 `goals.glide_path.floor_level`이 로드됨([DD-04-18]) | 아키텍처 |
 | V4-34 | `run.env=live` + `web.public_exposed: true` → C-37 위반(기동 거부) | 단위 |
 | V4-35 | `research_open_questions.yaml`: `status: RESOLVED` + `resolved_at: null` → 거부, 파일 부재 → 빈 레지스트리 | 단위 |
+| V4-36 | 법령값 legacy config 경로 5개는 필드 집합에 없고 YAML은 `extra_forbidden`, `OMRA__`는 `unknown_override` exact path로 거부. `TaxParams`·seed `tax.yaml` 계약은 유지 | 표 기반 단위 |
 
 ---
 
@@ -1931,8 +1937,11 @@ class UnsupportedInEnvError(ConfigError): ...     # 미확정 TR ID로 live 기�
 | DD-04-18 | glide path 파라미터는 `goals.yaml` 한 곳 — `glide.*` AppConfig 블록을 만들지 않는다 | §4.4·§5.3 |
 | DD-04-19 | `SAFETY_CODE_SECRET`을 전용 3급 시크릿으로 등재(웹 세션키 재사용 배제) | §7.2·§8.1 |
 | DD-04-20 | `research_open_questions.yaml` 스키마 — 파생값(`related_count_this_month`)은 파일에 두지 않는다 | §5.12 |
+| DD-04-21 | [DD-10-16] 수용 — 세법 법령값은 `tax.yaml` 단일 정본, config 별칭 5개와 C-29 폐기 | §4.1·§4.2·§4.5 |
 
 **수용한 타 문서 DD**(재정의 아님, 키 등재만): [DD-02-3](계좌 슬러그·`Account` 타입) → §4.3 / [DD-02-4](`asset_class` str + config 어휘) → §5.1 / [DD-10-4](`account_preference` 컬럼) → §5.1 / [DD-10-7](`tax.user_marginal_credit_rate`) → §4.2 / [DD-10-10](`tax.health_insurance_status`) → §4.2 / [DD-10-14](`tax.harvest_auto_enabled`) → §4.2 / [DD-06-5]·[DD-06-7](`data.providers.*`·`data.master.files`) → §4.4 / [DD-01-6](RELOAD 검증 실패 처리) → §10.2 / [DD-07-5](`universe.proxy_index_key`) → §5.1 / [DD-07-11](`band.restore_mode`·`restore_rho`) → §4.2 / [DD-07-12](`crypto.vol_scale_max_age_days`) → §4.2 / [DD-07-14](glide `floor_level` 값 3) → §5.3 / [DD-09-14](`SAFETY_CODE_SECRET`) → §7.2 / [DD-13-4](`alerts.info_immediate_max_per_day`) → §4.2 / [DD-13-13]·[DD-13-14]·[DD-13-15](`web.*`) → §4.4 / [DD-15-4](`backtest.*`) → §4.2 / [DD-12-3]·[DD-12-4]·[DD-12-6]·[DD-12-7]·[DD-12-14]·[DD-12-15](`jobs.*`·`monitoring.*`) → §4.4 / [DD-14-4](`research.inbox_root`·`report_root`) → §4.2.
+
+특히 [DD-10-16]의 법령값/운영값 분리는 [DD-04-21]로 수용했다.
 
 ---
 
@@ -1954,7 +1963,7 @@ class UnsupportedInEnvError(ConfigError): ...     # 미확정 TR ID로 live 기�
 | 12 | ~~알림 억제 테이블의 물리 스키마~~ **해소** | — | [DD-04-13]을 재작성해 `run_ledger`의 `venue='SYS'` 행([12-scheduling-and-operations.md](12-scheduling-and-operations.md) [DD-12-9] 패턴)으로 전환했다. **본 문서 때문에 03 DDL을 신설할 필요가 없고**, 13 [DD-13-5]·03 [DD-03-31]의 `notification_suppression`(억제 상태 영속)과도 충돌하지 않는다 — 억제(창)와 사다리 멱등(단계별 1회)은 다른 메커니즘이기 때문이다. 잔여 조율은 항목 19 |
 | 13 | ~~`watchdog.interval_sec` 값 충돌~~ **해소** | — | **config 키의 값 정본은 본 문서**이므로 [DD-04-5]의 **10**을 유지한다(§4.4 `WatchdogCfg`). [12-scheduling-and-operations.md](12-scheduling-and-operations.md) §19 표의 `watchdog.*` 행이 `180 / 5000 / 3 / **10**` + "(값 정본: 04 [DD-04-5])"로 정정되어 양방향 정합이 확인됐다 |
 | 14 | ~~`crypto` 김프 알림 임계의 키 이름~~ **해소** | — | **키 이름 정본은 본 문서**의 `crypto.kimchi_alert`(§4.4)이며, [11-realtime-and-surveillance.md](11-realtime-and-surveillance.md)가 [DD-11-7]로 `kimchi_alert`(소수 비율 0.05)로 정정을 마쳤다 — 11에 `crypto.kimchi_warn`은 더 이상 존재하지 않는다 |
-| 15 | `tax.*`·`waterfall.*`가 `config.yaml`과 `tax.yaml`에 **이중 정의** | 10 설계서와 조율 | 02 부록 A는 `tax.deduction`·`tax.isa_free_limit`·`waterfall.pension_deduct_cap_*`를 config 키로 두는데, 02 §5.5는 "세율·공제·한도는 `tax.yaml`에 effective-date 버전으로"라고 한다. [10-tax-engine.md](10-tax-engine.md) §3.1 `TaxParams`는 후자를 택해 같은 값을 전부 흡수했고 본 문서 §4.2는 전자를 택했다 — **같은 법령값의 출처가 둘**이면 개정 때 한쪽만 갱신된다. 잠정 처분: `tax.yaml`을 값의 정본으로 보고 `config.yaml`의 중복 키는 로더가 `tax.yaml` 값과 불일치 시 `ConfigConflictError`를 던진다(상호 제약 C-29). **04 단독 수정으로는 해소되지 않는다** — `config.yaml` 쪽 중복 키를 지우면 [10-tax-engine.md](10-tax-engine.md) §3.1 `TaxParams`를 읽는 경로는 멀쩡하지만 02 부록 A 대조(CI ⓒ)가 깨지고, 반대로 `tax.yaml`에서 지우면 10이 깨진다. **정리 방향(권고)**: 법령값(세율·공제·한도)은 `tax.yaml` 단일 정본으로 두고, 02 부록 A의 `tax.deduction`·`tax.isa_free_limit`·`waterfall.pension_deduct_cap_*` 행은 "`tax.yaml`의 같은 이름 키를 가리키는 별칭"으로 재해석해 `AppConfig`에서 제거한다 — 이때 [DD-04-4] 검사 ⓒ에 "`tax.yaml` 스키마에 존재하는 키는 `AppConfig` 필드가 없어도 통과"라는 예외 한 줄이 필요하다. 10과 동시에 반영해야 하며 어느 한쪽만 바꾸면 CI가 깨진다 |
+| 15 | ~~`tax.*`·`waterfall.*` 법령값의 `config.yaml`/`tax.yaml` 이중 정의~~ **해소** | — | [DD-10-16]과 [DD-04-21]로 법령값을 `tax.yaml TaxParams`에만 남겼다. 과거 별칭 5개는 strict 입력 거부되고 C-29는 ID 재사용 없이 폐기됐다 |
 | 16 | `jobs.*`·`monitoring.*` 블록의 필드 확정 | **부분 해소** | §4.4 `schema/ops.py`에 필드를 확정했다([DD-04-16]). 잔여 ①**(해소)**: 잡별 오버라이드의 키 경로를 **`jobs.overrides.<name>.{budget_sec,enabled}`**로 확정했고(고정 필드 `planner`·`catchup`·`dep_wait`·`us_submit_lead`와 임의 잡 이름을 같은 레벨에 두면 `extra="forbid"` 스키마가 성립하지 않는다), [12-scheduling-and-operations.md](12-scheduling-and-operations.md) §4.1 [DD-12-4]·§19 표가 그 표기로 정정을 마쳤다. 잔여 ②: `jobs.overrides.*` 기본값 표(12 §4.1)와 `monitoring.health.thresholds.*`(12 §11.1 표)는 **12가 값 정본**이라 본 문서는 매핑 타입만 갖는다. `monitoring.dms.ping_url`은 12 §13.2 **[확인 필요]** 그대로 |
 | 17 | `KR-01′` vs `KR-01P` 토큰 | 11 설계서와 조율 | [DD-04-14]가 config·DB 값을 `KR-01P`로 고정했다. [11-realtime-and-surveillance.md](11-realtime-and-surveillance.md)가 프라임 표기를 그대로 쓰면 `surveillance.yaml`의 행이 매칭되지 않는다 |
 | 18 | ~~`glide.floor_level` 키 경로~~ **해소** | — | [DD-04-18]이 `goals.yaml`의 `glide_path.floor_level`로 통일했고(값 3은 07 [DD-07-14] 그대로), [07-portfolio-engine.md](07-portfolio-engine.md) §13.1이 "config 키의 최종 좌표는 `goals.glide_path.floor_level`"로 정정을 마쳤다(07 §21 조율 표도 해소 표기) |
