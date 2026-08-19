@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ValidationError
 
+from omra.config.constraints import ConstraintSeverity, ConstraintViolation, check_all
 from omra.config.errors import (
     ConfigConflictError,
     ConfigError,
@@ -162,7 +164,7 @@ def _config_error_violations(  # noqa: PLR0911 - explicit exception-to-violation
 def _known_app_shape() -> Mapping[str, object]:
     values: dict[str, object] = {name: {} for name in AppConfig.model_fields}
     values["accounts"] = []
-    values["backtest"] = {"snapshot": {}}
+    values["backtest"] = {"snapshot": {"absolute_floor": {}}}
     return AppConfig.model_validate(values).model_dump(mode="python")
 
 
@@ -301,7 +303,7 @@ def load_and_validate_config(  # noqa: PLR0915 - canonical multi-source orchestr
         for layer in layered.sources
     )
     questions = questions_file or OpenQuestionsFile(version=1, questions=())
-    return ConfigBundle(
+    bundle = ConfigBundle(
         app=app,
         universe=universe,
         targets=targets,
@@ -317,6 +319,18 @@ def load_and_validate_config(  # noqa: PLR0915 - canonical multi-source orchestr
         sources=(*layer_sources, *record_sources),
         fingerprint=fingerprint,
     )
+    constraint_violations = check_all(bundle)
+    constraint_errors = tuple(
+        violation.as_config_violation()
+        for violation in constraint_violations
+        if violation.severity is ConstraintSeverity.ERROR
+    )
+    for violation in constraint_violations:
+        if violation.severity is ConstraintSeverity.WARNING:
+            warnings.warn(violation.render(), RuntimeWarning, stacklevel=2)
+    if constraint_errors:
+        raise ConfigValidationError(constraint_errors)
+    return bundle
 
 
 __all__ = [
@@ -329,6 +343,8 @@ __all__ = [
     "ConfigSyntaxError",
     "ConfigTypeConflict",
     "ConfigValidationError",
+    "ConstraintSeverity",
+    "ConstraintViolation",
     "CredentialSurface",
     "EffectiveVersionMissing",
     "ExecEnv",
@@ -346,6 +362,7 @@ __all__ = [
     "VersionedFile",
     "Violation",
     "apply_overrides",
+    "check_all",
     "check_credential_placement",
     "config_fingerprint",
     "deep_merge",
