@@ -6,6 +6,7 @@ from omra.config.errors import (
     ConfigSyntaxError,
     ConfigTypeConflict,
     ConfigValidationError,
+    EffectiveVersionMissing,
     MissingSecrets,
     UnknownOverrideError,
     UnsupportedInEnvError,
@@ -36,6 +37,7 @@ from omra.config.secrets import (
     load_secrets,
 )
 from omra.config.settings import AppConfig
+from omra.config.versioned import VersionedFile
 
 __all__ = [
     "CATALOG",
@@ -46,6 +48,7 @@ __all__ = [
     "ConfigTypeConflict",
     "ConfigValidationError",
     "CredentialSurface",
+    "EffectiveVersionMissing",
     "ExecEnv",
     "LayeredMapping",
     "LoadedLayer",
@@ -57,6 +60,7 @@ __all__ = [
     "Secrets",
     "UnknownOverrideError",
     "UnsupportedInEnvError",
+    "VersionedFile",
     "Violation",
     "apply_overrides",
     "check_credential_placement",

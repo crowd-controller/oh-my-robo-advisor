@@ -1,0 +1,18 @@
+schema_version: 1
+versions:
+  - effective_from: 2026-01-01
+    note: "2026 세제 기준"
+    params:
+      overseas_cg_rate: "0.22"
+      overseas_cg_deduction_krw: "2500000"
+      dividend_wht_rate: "0.154"
+      fin_income_aggregate_threshold_krw: "20000000"
+      isa_free_limit_krw: "2000000"
+      isa_excess_rate: "0.099"
+      isa_annual_contrib_cap_krw: "20000000"
+      pension_deduct_cap_savings_krw: "6000000"
+      pension_deduct_cap_total_krw: "9000000"
+      pension_contrib_cap_total_krw: "18000000"
+      harvest_cost_gate_factor: "0.5"
+      harvest_annual_nav_cap: "0.20"
+      crypto_tax_enabled: false

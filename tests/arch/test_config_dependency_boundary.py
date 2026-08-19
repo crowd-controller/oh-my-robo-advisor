@@ -5,15 +5,18 @@ from pathlib import Path
 
 from omra.config import (
     CATALOG,
+    EffectiveVersionMissing,
     MissingSecrets,
     Secrets,
     SecretSpec,
     UnsupportedInEnvError,
+    VersionedFile,
     check_credential_placement,
     has_smtp,
     has_telegram,
     load_secrets,
 )
+from omra.config.errors import EffectiveVersionMissing as ModuleEffectiveVersionMissing
 from omra.config.errors import MissingSecrets as ModuleMissingSecrets
 from omra.config.errors import UnsupportedInEnvError as ModuleUnsupportedInEnvError
 from omra.config.files import (
@@ -38,6 +41,9 @@ from omra.config.files import (
     SurveillanceMapFile,
     SurvMapEntry,
     TargetsFile,
+    TaxLawFile,
+    TaxParams,
+    TaxVersion,
     TrIdsRaw,
     UniverseFile,
     UniverseInstrument,
@@ -86,6 +92,9 @@ from omra.config.files.surveillance_map import (
 )
 from omra.config.files.surveillance_map import SurvMapEntry as ModuleSurvMapEntry
 from omra.config.files.targets import TargetsFile as ModuleTargetsFile
+from omra.config.files.taxlaw import TaxLawFile as ModuleTaxLawFile
+from omra.config.files.taxlaw import TaxParams as ModuleTaxParams
+from omra.config.files.taxlaw import TaxVersion as ModuleTaxVersion
 from omra.config.files.trids import (
     RestBaseUrls as ModuleRestBaseUrls,
 )
@@ -111,6 +120,7 @@ from omra.config.secrets import check_credential_placement as module_check_crede
 from omra.config.secrets import has_smtp as module_has_smtp
 from omra.config.secrets import has_telegram as module_has_telegram
 from omra.config.secrets import load_secrets as module_load_secrets
+from omra.config.versioned import VersionedFile as ModuleVersionedFile
 
 _CONFIG_ROOT = Path(__file__).resolve().parents[2] / "src" / "omra" / "config"
 _ALLOWED_INTERNAL_ROOTS = frozenset({"omra.config", "omra.core"})
@@ -151,6 +161,11 @@ def test_secret_loader_public_coordinates_are_stable() -> None:
     assert UnsupportedInEnvError is ModuleUnsupportedInEnvError
 
 
+def test_versioned_file_public_coordinates_are_stable() -> None:
+    assert EffectiveVersionMissing is ModuleEffectiveVersionMissing
+    assert VersionedFile is ModuleVersionedFile
+
+
 def test_record_file_public_coordinates_are_stable() -> None:
     assert RecordFile is BaseRecordFile
     assert AutoAction is ModuleAutoAction
@@ -181,3 +196,6 @@ def test_record_file_public_coordinates_are_stable() -> None:
     assert WsSection is ModuleWsSection
     assert WsTrTable is ModuleWsTrTable
     assert validate_tr_ids_for_env is module_validate_tr_ids_for_env
+    assert TaxLawFile is ModuleTaxLawFile
+    assert TaxParams is ModuleTaxParams
+    assert TaxVersion is ModuleTaxVersion
