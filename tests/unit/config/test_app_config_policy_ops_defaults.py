@@ -35,7 +35,7 @@ def test_policy_improvement_and_operations_defaults_match_canonical_tables() -> 
             "live_confirmation": None,
             "manual_approve": False,
             "max_account_value": None,
-            "kill_file": "/app/var/db/KILL",
+            "kill_file": "/app/var/data/KILL",
         },
         "accounts": [],
         "research": {

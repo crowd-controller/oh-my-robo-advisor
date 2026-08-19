@@ -686,8 +686,11 @@ class RunCfg(BaseModel, frozen=True):
     manual_approve: bool = False              # live 전환 첫 1주 true (03 §5.1-4)
     max_account_value: int | None = None      # KRW. 초과분 신규 매수 불가 (03 §5.2). HR
                                               # ★ 키 이름 정본은 00 §3.2 P7·03 §5.2 (`_krw` 접미 없음)
-    kill_file: Path = Path("/app/var/db/KILL")   # 01-design §5.1 A1
+    kill_file: Path = Path("/app/var/data/KILL")   # 01-design §5.1 A1
 ```
+
+KILL 파일의 단일 정본 경로는 `/app/var/data/KILL`이다. 과거 `/app/var/db/KILL`이
+남아 있으면 기동과 직접 마이그레이션 모두 스키마 변경 전에 명시적으로 거부한다.
 
 **live 3중 일치 검사**(03 §5.1-2, 01-design §5.1 A2)는 config 계층이 소유한다:
 

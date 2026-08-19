@@ -1,0 +1,10 @@
+services:
+  app:
+    env_file: !reset []
+
+  litestream:
+    env_file: !reset []
+    volumes:
+      - ./config/litestream.smoke.yml:/etc/litestream.yml:ro
+      - ./var/smoke/replica:/replica
+      - ./var/smoke/restore:/restore

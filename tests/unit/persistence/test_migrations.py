@@ -205,8 +205,19 @@ def test_kill_switch_refuses_migration_before_schema_mutation(tmp_path: Path) ->
     with pytest.raises(SystemExit, match="KILL switch present"):
         command.upgrade(_config(database_path), "head")
 
-    with sqlite3.connect(database_path) as connection:
-        assert not _user_tables(connection)
+    assert not database_path.exists()
+
+
+def test_legacy_db_kill_path_refuses_direct_migration_before_schema_mutation(
+    tmp_path: Path,
+) -> None:
+    database_path = _database_path(tmp_path)
+    (database_path.parent / "KILL").touch()
+
+    with pytest.raises(SystemExit, match="legacy KILL path present"):
+        command.upgrade(_config(database_path), "head")
+
+    assert not database_path.exists()
 
 
 def test_stopped_bot_state_refuses_subsequent_migration_command(tmp_path: Path) -> None:

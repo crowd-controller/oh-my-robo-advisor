@@ -1390,22 +1390,26 @@ class AuditLogger:
 
 ### 8.1 Litestream (SQLite 실시간 복제)
 
-`config/litestream.yml` (정본: 01 §6.5 — 전재):
+`config/litestream.yml` (정본: 01 §6.5 — 전재, Litestream v0.5.16):
 
 ```yaml
+snapshot:
+  interval: 24h
+  retention: 720h
+retention:
+  enabled: true
+validation:
+  interval: 1h
 dbs:
   - path: /app/var/db/omra.sqlite
-    replicas:
-      - type: s3
-        bucket: ${LITESTREAM_BUCKET}          # .env.litestream
-        path: omra-db
-        sync-interval: 1s                     # RPO≈초의 실체
-        snapshot-interval: 24h
-        retention: 720h                       # 30일
+    replica:
+      url: ${LITESTREAM_REPLICA_URL}            # .env.litestream
+      sync-interval: 1s                          # RPO≈초의 실체
 ```
 
+- v0.5 정본은 DB별 단수 `replica`와 전역 `snapshot`을 사용한다. `LITESTREAM_REPLICA_URL`은 production에서 S3 호환 URL로 주입하며 저장소에는 자격증명을 넣지 않는다.
 - 전용 컨테이너, `omra-db` 볼륨 공유, 자격증명은 `.env.litestream`만 (01 §1.6).
-- **VACUUM 상호작용** (정본: 01 §6.5): `weekly_maintenance`의 `VACUUM`은 DB 재작성 → Litestream 전체 스냅샷 재전송. 허용하되, **`VACUUM` 후 Litestream 스냅샷 1회 성공을 확인하고 잡을 종료**한다. 확인 방법: 복제 대상 스토리지의 최신 스냅샷 타임스탬프 폴링(리스트 API) 또는 litestream 메트릭 [확인 필요 — 확인 수단은 litestream 공식 문서/실측(M0)으로 확정].
+- **VACUUM 상호작용** (정본: 01 §6.5): `weekly_maintenance`의 `VACUUM`은 DB 재작성 → Litestream 전체 스냅샷 재전송. 허용하되, **`VACUUM` 후 Litestream 스냅샷 1회 성공을 확인하고 잡을 종료**한다. 확인 방법: 복제 대상 스토리지의 최신 스냅샷 타임스탬프 폴링(리스트 API) 또는 litestream 메트릭 [확인 필요 — 확인 수단은 litestream 공식 문서/실측(M0 운영 gate)으로 확정].
 - 백업 실패 시 critical (01 §6.2 시크릿 표의 Litestream 행).
 
 ### 8.2 `VACUUM INTO` 스냅샷 — tools의 유일한 DB 읽기 경로 (정본: 01 §1.6)

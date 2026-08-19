@@ -23,4 +23,4 @@ class RunCfg(BaseModel):
     live_confirmation: str | None = None
     manual_approve: bool = False
     max_account_value: int | None = None
-    kill_file: Path = Path("/app/var/db/KILL")
+    kill_file: Path = Path("/app/var/data/KILL")

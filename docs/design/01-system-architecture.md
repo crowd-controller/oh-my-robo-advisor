@@ -29,7 +29,7 @@ oh-my-robo-advisor/
 ├── pyproject.toml             # ★ §2.3 — 의존성 + [tool.importlinter] 계약(§8)
 ├── uv.lock
 ├── Dockerfile                 # ★ §7.2
-├── docker-compose.yml         # ★ §7.1
+├── compose.yaml                # ★ §7.1
 ├── .env / .env.litestream / .env.tools    # 시크릿 3분할 (정본: 01 §1.6·§6.1)
 ├── CONTRIBUTING.md            # branch·commit·검증·자동화 신원 규칙
 ├── config/                    # 사람이 편집하는 입력물, 컨테이너에 :ro 마운트 (정본: 01 §2)
@@ -118,8 +118,9 @@ CLI 명령 카탈로그 (`src/omra/cli/`, Typer. 근거: 01 §2 "run/backtest/re
 
 | 명령 | 실행 위치 | 동작 |
 |---|---|---|
-| `run` | app 컨테이너 CMD | Worker 기동(§3.1). 유일한 상시 실행 명령 |
-| `health` | app 내부(Docker healthcheck) | loopback `/healthz` 조회 → exit 0/1 (§7.4) |
+| `run` | app 컨테이너 CMD | M0에서는 설정·DB·스키마·볼륨을 bootstrap한 뒤 FastAPI를 기동한다. §3 구현 이후 Worker·스케줄러를 같은 명령에 점진 통합한다 |
+| `ready` | app 내부(Docker healthcheck) | M0 `/readyz` 조회 → exit 0/1. 설정·DB·Alembic head·쓰기 볼륨만 확인하며 외부 네트워크 호출은 0건(§7.4) |
+| `health` | app 내부(M3 이후) | 최종 `/healthz` 조회 → exit 0/1. heartbeat·토큰·loop lag·WS·감시 신선도 포함(§7.4, [12](12-scheduling-and-operations.md) §11.2) |
 | `backtest …` | **tools 전용** | 백테스트·챌린저 G2 러너. 봇 프로세스 내 실행 금지 (정본: 01 §1.6) |
 | `report …` | tools 또는 app 일회성 | 리포트 재생성 |
 | `plan --dry` | app 일회성 | 오늘 계획 미리보기(주문 제출 없음) |
@@ -591,76 +592,112 @@ async def graceful_shutdown(ctx, sup, reason) -> None:
 
 ## 7. Docker Compose 배포 토폴로지
 
-### 7.1 docker-compose.yml (계획 01 §1.6을 완성형으로)
+### 7.1 `compose.yaml` (계획 01 §1.6의 실행 정본)
 
-계획 01 §1.6의 골격·주석을 그대로 유지하고, 계획이 문장으로 요구한 항목(non-root·read-only·tmpfs — 01 §1.6/§7-6)과 이 문서의 DD 추가분을 반영한 완성본:
+아래 내용은 저장소의 `compose.yaml`과 동일하다. M0에서는 app bootstrap과 readiness만 제공하며, Worker·스케줄러·브로커·최종 health는 각 소유 마일스톤에서 점진적으로 붙인다.
 
 ```yaml
 name: omra
 
 services:
-  app:            # 봇 엔진 + 스케줄러 + FastAPI + Telegram + T0 WS (단일 프로세스 — 00 §5-1)
-    build: .
-    image: "omra:${OMRA_TAG:-dev}"          # [DD-01-10] 태깅 §7.2
-    init: true                               # PID 1 시그널 전달 (graceful shutdown 전제)
+  app:
+    image: omra-app:${OMRA_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
     restart: unless-stopped
-    stop_grace_period: 40s                   # [DD-01-5]
-    user: "1000:1000"                        # non-root (정본: 01 §7-6)
+    stop_grace_period: 45s
+    user: "1000:1000"
     read_only: true
-    tmpfs: [/tmp]
-    env_file: [.env]                         # 시크릿 (chmod 600, git 제외 — 01 §6.1)
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    env_file:
+      - path: .env
+        required: false
     environment:
-      - OMRA__RUNTIME__ROLE=app              # SC-13 자격증명 배치 검사의 입력
+      OMRA__RUNTIME__ROLE: app
     volumes:
       - ./config:/app/config:ro
-      - omra-db:/app/var/db                  # SQLite + 토큰 파일락 + restart_marks
-      - omra-data:/app/var/data              # Parquet + RO 스냅샷 + 실험 결과 JSON + KILL
-      - omra-logs:/app/var/logs              # 운영 로그 + 감사로그
-      - omra-policy:/app/var/policy          # 잡 산출 정책물 (targets/universe) — rw
+      - omra-db:/app/var/db
+      - omra-data:/app/var/data
+      - omra-logs:/app/var/logs
+      - omra-policy:/app/var/policy
     ports:
-      - "100.x.y.z:8080:8080"                # Tailscale 인터페이스에만 바인딩 (01 §7-1)
-    healthcheck:                             # 관측 전용 — 재시작을 유발하지 않는다(§7.4)
-      test: ["CMD", "python", "-m", "omra.cli", "health"]   # 호출 형식 정본: 01 §1.6
+      - "${OMRA_BIND_ADDRESS:-127.0.0.1}:${OMRA_PORT:-8080}:8080"
+    healthcheck:
+      test: [CMD, python, -m, omra.cli, ready]
       interval: 60s
       timeout: 10s
       retries: 3
-    logging:                                 # [DD-01-13] stdout 로그 상한
+      start_period: 30s
+    logging:
       driver: json-file
-      options: { max-size: "50m", max-file: "3" }
+      options:
+        max-size: 50m
+        max-file: "3"
 
-  litestream:     # SQLite 실시간 복제 (RPO≈초 — 01 §6.5)
-    image: litestream/litestream
+  litestream:
+    image: litestream/litestream:0.5.16@sha256:f085f8bce71a5ad4ce8e28b28ea522de1d9e0d7dd0af3ea5c1bd626d0f341954
     restart: unless-stopped
-    depends_on: [app]
-    command: replicate -config /etc/litestream.yml
+    stop_grace_period: 45s
     user: "1000:1000"
     read_only: true
-    env_file: [.env.litestream]              # 오브젝트 스토리지 키만
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,mode=1777
+    command: [replicate, -config, /etc/litestream.yml]
+    env_file:
+      - path: .env.litestream
+        required: false
+    depends_on:
+      app:
+        condition: service_healthy
     volumes:
-      - omra-db:/app/var/db                  # 복제 대상 (01 §1.6)
+      - omra-db:/app/var/db
       - ./config/litestream.yml:/etc/litestream.yml:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: "3"
 
-  tools:          # 일회성 실행 전용 (백테스트·챌린저 G2). 상시 기동 없음 (01 §1.6)
-    build: .
-    image: "omra:${OMRA_TAG:-dev}"
-    profiles: ["tools"]                      # 기본 up 대상에서 제외
+  tools:
+    image: omra-app:${OMRA_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: [tools]
     user: "1000:1000"
     read_only: true
-    tmpfs: [/tmp]
-    env_file: [.env.tools]                   # 브로커·Telegram·SMTP 키 없음 (01 §1.6·§6.1)
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m,mode=1777
+    env_file:
+      - path: .env.tools
+        required: false
     environment:
-      - OMRA__RUNTIME__ROLE=tools            # SC-13이 자격증명 '부재'를 강제
+      OMRA__RUNTIME__ROLE: tools
+    command: [python, -m, omra.cli, --help]
     volumes:
       - ./config:/app/config:ro
-      - omra-data:/app/var/data              # 스냅샷 읽기 + 결과 쓰기
+      - omra-data:/app/var/data
       - omra-logs:/app/var/logs
-      # omra-db는 마운트하지 않는다 — §7.3 스냅샷 경로 (정본: 01 §1.6)
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: "3"
 
 volumes:
-  omra-db: {}
-  omra-data: {}
-  omra-logs: {}
-  omra-policy: {}
+  omra-db:
+  omra-data:
+  omra-logs:
+  omra-policy:
 ```
 
 > **[DD-01-13] stdout 로그 로테이션 상한**
@@ -673,28 +710,43 @@ Compose에 없는 것(의도): 사이드카(autoheal 등 — `/var/run/docker.so
 ### 7.2 Dockerfile·이미지 태깅·롤백
 
 ```dockerfile
-# Dockerfile — 2-stage. uv 바이너리 공급 방식은 [확인 필요]: uv 공식 문서의
-# 권장 고정 태그(COPY --from=ghcr.io/astral-sh/uv:<버전>)를 빌드 시점에 확정한다.
-FROM python:3.12-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-WORKDIR /app
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project     # 의존성 레이어 캐시
-COPY src/ src/
-RUN uv sync --frozen --no-dev                          # 프로젝트 설치
+# syntax=docker/dockerfile:1.7
 
-FROM python:3.12-slim
-RUN groupadd -g 1000 omra && useradd -u 1000 -g 1000 -m omra
+ARG PYTHON_IMAGE=python:3.12.13-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.12.5@sha256:e85be844203885286c60ffad8a858d48afb6c5a5c237ca0e67f12e74b8f174b1
+
+FROM ${UV_IMAGE} AS uv
+FROM ${PYTHON_IMAGE} AS builder
+
+COPY --from=uv /uv /uvx /bin/
 WORKDIR /app
-COPY --from=builder /app/.venv /app/.venv
-COPY config/ /app/config/                              # 기본값만 — 런타임엔 :ro 마운트가 덮음
-ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
-USER omra
-CMD ["python", "-m", "omra.cli", "run"]                # 호출 형식 정본: 01 §1.6
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_NO_PROGRESS=1
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
+COPY src ./src
+RUN uv sync --locked --no-dev --no-editable
+
+FROM ${PYTHON_IMAGE} AS runtime
+
+ENV HOME=/tmp \
+    PATH=/app/.venv/bin:${PATH} \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+WORKDIR /app
+RUN mkdir -p /app/var/db /app/var/data /app/var/logs /app/var/policy \
+    && chown -R 1000:1000 /app
+COPY --from=builder --chown=1000:1000 /app/.venv /app/.venv
+COPY --chown=1000:1000 alembic.ini /app/alembic.ini
+
+USER 1000:1000
+EXPOSE 8080
+CMD ["python", "-m", "omra.cli", "run"]
 ```
 
 > **[DD-01-10] 이미지 태깅·롤백 규칙**
-> - 결정: 배포 스크립트가 `omra:<git-short-sha>`로 빌드하고 `.env`의 `OMRA_TAG`를 갱신한다. 직전 태그는 `OMRA_TAG_PREV`로 보관한다. 롤백 = `OMRA_TAG=$OMRA_TAG_PREV docker compose up -d app` 1줄.
+> - 결정: 배포 스크립트가 `omra-app:<git-short-sha>`로 빌드하고 `.env`의 `OMRA_IMAGE_TAG`를 갱신한다. 직전 태그는 `OMRA_IMAGE_TAG_PREV`로 보관한다. 롤백 = `OMRA_IMAGE_TAG=$OMRA_IMAGE_TAG_PREV docker compose up -d app` 1줄.
 > - 근거: 03 §6.3-4 "롤백: 직전 이미지 태그로 즉시 복귀"와 01 §1.3 "다운그레이드 미지원(롤백은 직전 이미지 태그 + Litestream 복원)"이 태그 보존을 전제하는데 태깅 규칙 자체는 계획에 없다. `latest` 단일 태그는 직전 이미지를 파괴하므로 배제.
 > - 계획 문서와의 관계: 충돌 없음. 단 DB 마이그레이션이 이미 적용된 뒤의 코드 롤백은 구 코드×신 스키마 조합이 되므로, 스키마 변경이 낀 롤백은 Litestream 시점 복원과 함께 수행한다(절차 정본: 03 §6.3, 복원 구현: [03](03-data-and-persistence.md)).
 
@@ -735,18 +787,20 @@ async def make_ro_snapshot(db: Engine, dest: Path) -> SnapshotMeta:
 > - 근거: 계획 01 §1.6은 "스냅샷 나이는 결과 파일에 기록해 재현성을 보장한다"까지만 정하고 **낡은 스냅샷으로 검증 게이트를 도는 것**을 막지 않는다. 스냅샷 생성 주체가 `weekly_maintenance`이므로 그 주기가 자연스러운 상한이다.
 > - 계획 문서와의 관계: 충돌 없음 — 기록 요건에 거부 임계를 더한다.
 
-### 7.4 healthcheck 의미론 (정본: 01 §6.4)
+### 7.4 readiness와 health 의미론 (정본: 계획 01 §6.4)
 
-- `health`(CLI)는 loopback `http://127.0.0.1:8080/healthz`를 조회해 exit 0/1을 반환한다 — 이벤트 루프가 실제로 응답하는지를 검사하는 것이 목적이므로 프로세스 존재 확인으로 대체하지 않는다. `/healthz` 항목 구성(heartbeat 나이·DB 쓰기·토큰·loop lag·WS 상태·감시 신선도)의 정본은 01 §6.4이고 구현은 [12](12-scheduling-and-operations.md).
-- **healthcheck는 관측 전용이다.** `unhealthy`는 재시작을 유발하지 않으며(Docker 문서화된 동작 — 정본: 01 §6.4), 재시작 유발은 §4.5 워치독의 자발적 종료가 담당한다. 이 역할 분리를 주석으로 compose에 명시한다.
+- M0 컨테이너 healthcheck는 `omra ready`가 loopback `http://127.0.0.1:8080/readyz`를 조회해 exit 0/1을 반환한다. readiness는 공개 설정 로드, SQLite 연결, Alembic head 일치, 선언된 쓰기 볼륨만 확인하고 **외부 네트워크 호출은 0건**이다.
+- M3에서 추가하는 `omra health`와 `/healthz`는 heartbeat 나이·DB 쓰기·토큰·loop lag·WS 상태·감시 신선도를 포함하는 최종 `HealthReport`다. M0 readiness는 이 운영 health를 구현했거나 검증했다는 뜻이 아니다.
+- **두 probe 모두 관측 전용이다.** `unhealthy`는 재시작을 유발하지 않으며, 최종 자동 복구는 §4.5 워치독의 자발적 종료가 담당한다.
 
 ### 7.5 검증 항목
 
-- `docker compose up` → 헬스체크 응답(M0 DoD — 정본: 04 §2 M0).
+- `docker compose up --wait` → `omra ready` 성공(M0 코드 DoD — 정본: 04 §2 M0).
+- CI `container-smoke`는 이미지 빌드, non-root/read-only 기동, readiness, Litestream file replica 강제 스냅샷과 `-integrity-check full` 복원을 검증한다.
+- 실제 S3 호환 저장소 자격증명, KIS 모의 앱키, 운영 restore drill은 credential-gated 수동 gate로 남으며 file replica CI가 이를 대체하지 않는다.
 - `read_only: true` 하에서 전 볼륨 쓰기 경로 정상(쓰기는 named volume으로만 — 위반 시 즉시 크래시로 발견된다).
-- tools에서 `omra-db` 접근 시도 → 경로 부재로 실패(마운트 자체가 없음을 compose config 스냅샷 테스트로 고정).
-- 롤백 리허설: `OMRA_TAG_PREV`로 재기동 → 셀프체크 통과 → 상태 복원.
-- litestream 컨테이너가 `.env`(브로커 키 포함)가 아닌 `.env.litestream`만 로드함을 compose config로 단정.
+- tools에서 `omra-db` 접근 시도 → 경로 부재로 실패(마운트 자체가 없음을 compose 계약 테스트로 고정).
+- litestream 컨테이너가 `.env`가 아닌 `.env.litestream`만 로드함을 compose 계약으로 단정한다.
 
 ## 8. import-linter 계약 파일 구현
 
@@ -1171,7 +1225,7 @@ forbidden_modules = [
 | DD-01-7 | 코어 repos 모듈 좌표 고정 + 열거 동기화 테스트(AT-1) | §8.1.1 |
 | DD-01-8 | 계약 위치 = pyproject.toml, "brokers → 전략" 열거 확정 | §8.2 |
 | DD-01-9 | `Σ_monitor` 좌표 = `engine/covariance_monitor.py` + 계약 C10 | §8.2 |
-| DD-01-10 | 이미지 태깅 `omra:<git-sha>` + `OMRA_TAG_PREV` 롤백 포인터 | §7.2 |
+| DD-01-10 | 이미지 태깅 `omra-app:<git-sha>` + `OMRA_IMAGE_TAG_PREV` 롤백 포인터 | §7.2 |
 | DD-01-11 | 최초 기동 초기 상태: dry_run/paper=RUNNING, live=SAFE_MODE | §5.1 |
 | DD-01-12 | tools 스냅샷 신선도 임계 `tools.snapshot_max_age_h`(기본 168h) 미달 시 실행 거부 | §7.3 |
 | DD-01-13 | 컨테이너 stdout 로그 로테이션 상한(50MB×3) | §7.1 |

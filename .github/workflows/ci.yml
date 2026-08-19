@@ -106,3 +106,13 @@ jobs:
       - run: uv sync --all-groups
       - run: uv lock --check
       - run: uv run pip-audit --skip-editable
+
+  container-smoke:
+    name: M0 container smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build, replicate, restore, and verify
+        run: scripts/container_smoke.sh

@@ -1194,7 +1194,7 @@ def make_state(*, bot: BotState = BotState.RUNNING,
 
 | 마일스톤 | DoD 항목 (04 §2) | 대응 테스트/잡 | 자동화 수준 |
 |---|---|---|---|
-| **M0** | `docker compose up` → 헬스체크 응답 | 로컬 `docker compose up` + `omra health`(healthcheck 의미론 정본: [01](01-system-architecture.md) §7.4). **CI 잡으로 만들지 않는다** — J6는 in-memory SQLite 기반이라 compose 기동을 검증하지 않는다 | 수동 |
+| **M0** | `docker compose up` → readiness 응답 | 로컬 `docker compose up --wait` + `omra ready`. GitHub Actions `container-smoke`가 이미지 build, non-root/read-only 기동, readiness, Litestream file replica 강제 스냅샷과 full-integrity 복원을 보조 검증한다. 실제 S3/KIS/운영 restore drill은 credential-gated 수동 gate로 남는다 | 자동 + 수동 운영 gate |
 | M0 | CI green(import-linter 포함) | J1·J3·J4 | 자동 |
 | M0 | 모의 앱키 토큰 발급 1회 성공 | `record` 마커 실행 기록 + `kis.auth` 카세트 존재 | 반자동 |
 | M0 | 시크릿 만료 대장에 KIS 실전 앱키 등록 | M0 시점은 수동 확인(04 §2 M0 CI = lint+unit+import-linter). **config CI 게이트(J9)는 M2 추가 항목 3에서 도입**되며 그때부터 `secrets_registry.yaml` 필수 항목을 자동 단정한다 | 수동 → M2부터 자동 |
@@ -1365,7 +1365,7 @@ RTM은 전량 수거를 기계로 보증하지만, 아래 항목들은 요청 �
 | [01](01-system-architecture.md) §5.6 | **부팅 매트릭스** — {KILL 유무} × {prev 상태 6종} × {셀프체크 성공/항목별 실패}에서 `effective_state`가 "악화만 허용"을 위반하지 않음 | **L2 property** (`test_inv_boot_matrix.py`) — 조합 폭이 크므로 hypothesis 전략(`bot_contexts`, §4.2)으로 생성 |
 | [01](01-system-architecture.md) §4.6 | **태스크 카탈로그 스냅샷** — 기동 후 상시 태스크 이름 집합 == §4.1의 9종(무단 추가 차단) | **L5 integration** — `IntegrationHarness.boot()` 후 태스크 이름 집합을 골든(`tests/golden/consts/`)과 대조 |
 | [01](01-system-architecture.md) §3.4 | **RELOAD 20회 누수** — 동일 config로 `Bot` 20회 생성·해체 시 태스크·소켓·파일핸들 누수 0 | **L5 integration**(`harness.restart()` 반복 + 핸들 카운트 델타 0) |
-| [01](01-system-architecture.md) §7.5 | **compose config 스냅샷** — `tools`에 `omra-db` 마운트 부재(마운트 자체가 없음을 고정) | **L0/L3 정적** — `docker compose config` 산출 YAML을 골든과 대조(J3에서 실행, 컨테이너 기동 없음) |
+| [01](01-system-architecture.md) §7.5 | **compose 계약 + container smoke** — `tools`에 `omra-db` 마운트 부재, 이미지 build, readiness, Litestream file replica 강제 스냅샷·full integrity restore | **L0/L3 정적** 계약 테스트 + GitHub Actions `container-smoke`. 자격증명 없는 file replica는 실제 S3·KIS·운영 restore drill gate를 대체하지 않는다 |
 | [01](01-system-architecture.md) §8.2 | `[tool.importlinter]`는 01 소유 | 이 문서의 `pyproject.toml` 발췌(§3.1·§3.3)는 `[tool.mypy]`·`[tool.ruff]`만 정의하고 `[tool.importlinter]` 블록을 **쓰지 않는다** — 같은 파일에 병기되며 소유만 다르다 |
 | [05](05-broker-gateway.md) 각 절 검증 항목 표(§3.8·§4.3·§5.4·§6.3·§7.8·§8.6) | **V5-01~V5-40 전량**(V5-39 점검 스트릭 경계, V5-40 어댑터의 상태 미변경 포함) | RTM 전수 수거. V5-39는 L1 단위(연속 3회 방출/2회 미방출/정상 3회 해제 — F19와 짝), V5-40은 **L3 호출 그래프 검사**(어댑터 모듈에서 `SleeveState` 전이·감시 등급 설정 심볼 호출 부재) |
 | [12](12-scheduling-and-operations.md) §8.1·§20 | `catalog.ALL_JOBS` ↔ §8.1 분류표 일치, 의존 방향, §20 검증 항목 전량 | AT-5(§6.1)·AT-14(§6.3) + RTM 전수 수거 |

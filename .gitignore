@@ -16,6 +16,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Runtime state belongs to mounted volumes, not Git.
 var/

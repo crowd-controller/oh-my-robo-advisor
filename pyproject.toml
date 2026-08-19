@@ -40,7 +40,7 @@ dependencies = [
 ]
 
 [project.scripts]
-omra = "omra.cli:app"
+omra = "omra.cli:run"
 
 [dependency-groups]
 dev = [

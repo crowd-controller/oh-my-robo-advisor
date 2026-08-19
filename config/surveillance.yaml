@@ -1,0 +1,16 @@
+version: 1
+map:
+  - risk_type: KR-01
+    level: SV3
+  - risk_type: KR-02
+    level: SV2
+  - risk_type: KR-03
+    level: SV2
+  - risk_type: KR-04
+    level: SV2
+  - risk_type: KR-12
+    level: SV3
+  - risk_type: US-01
+    level: SV3
+  - risk_type: US-02
+    level: SV2

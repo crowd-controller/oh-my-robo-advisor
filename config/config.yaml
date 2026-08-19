@@ -1,0 +1,54 @@
+# Public, credential-free defaults. Environment secrets belong in ignored .env files.
+run:
+  env: dry_run
+accounts: []
+risk: {}
+core: {}
+satellite: {}
+cash: {}
+bl: {}
+mvo: {}
+cov: {}
+sanity: {}
+band: {}
+rebalance: {}
+universe: {}
+trade: {}
+momentum: {}
+crypto: {}
+mc: {}
+gk: {}
+backtest:
+  snapshot:
+    tolerance_pct: "0.05"
+    absolute_floor:
+      sharpe: "0"
+      max_mdd: "-1"
+order: {}
+execution: {}
+etf: {}
+tax: {}
+waterfall: {}
+protections: {}
+safe_mode: {}
+presence: {}
+tracking_error: {}
+alerts: {}
+ws: {}
+quote: {}
+fx: {}
+guard: {}
+realtime: {}
+surveillance: {}
+research: {}
+labs: {}
+policy: {}
+canary: {}
+data: {}
+watchdog: {}
+runtime: {}
+tools: {}
+web: {}
+secrets: {}
+jobs: {}
+monitoring: {}
