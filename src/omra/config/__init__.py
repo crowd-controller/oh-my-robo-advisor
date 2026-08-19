@@ -8,6 +8,7 @@ from omra.config.errors import (
     ConfigValidationError,
     MissingSecrets,
     UnknownOverrideError,
+    UnsupportedInEnvError,
     Violation,
 )
 from omra.config.layers import (
@@ -55,6 +56,7 @@ __all__ = [
     "SecretSurface",
     "Secrets",
     "UnknownOverrideError",
+    "UnsupportedInEnvError",
     "Violation",
     "apply_overrides",
     "check_credential_placement",

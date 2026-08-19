@@ -19,6 +19,18 @@ from omra.config.files.secrets_registry import (
 )
 from omra.config.files.surveillance_map import SurveillanceMapFile, SurvMapEntry
 from omra.config.files.targets import TargetsFile
+from omra.config.files.trids import (
+    HttpMethod,
+    PriorityBucket,
+    RestBaseUrls,
+    RestSection,
+    RestTr,
+    TrIdsRaw,
+    WsEndpoint,
+    WsSection,
+    WsTrTable,
+    validate_tr_ids_for_env,
+)
 from omra.config.files.universe import UniverseFile, UniverseInstrument
 
 __all__ = [
@@ -32,15 +44,25 @@ __all__ = [
     "GlidePathCfg",
     "Goal",
     "GoalsFile",
+    "HttpMethod",
     "MarketWeightsFile",
+    "PriorityBucket",
     "RecordFile",
+    "RestBaseUrls",
+    "RestSection",
+    "RestTr",
     "SecretRegistryEntry",
     "SecretTier",
     "SecretsRegistryFile",
     "SurvMapEntry",
     "SurveillanceMapFile",
     "TargetsFile",
+    "TrIdsRaw",
     "UniverseFile",
     "UniverseInstrument",
     "WithdrawalCfg",
+    "WsEndpoint",
+    "WsSection",
+    "WsTrTable",
+    "validate_tr_ids_for_env",
 ]

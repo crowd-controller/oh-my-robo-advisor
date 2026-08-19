@@ -1,0 +1,51 @@
+# KIS REST and WebSocket mappings. Unverified values remain explicit markers.
+rest:
+  live_prefix: "T"
+  paper_prefix: "V"
+  base_url:
+    live: "<확인 필요 — 공식 문서의 실전 REST 도메인>"
+    paper: "<확인 필요 — 모의 REST 도메인>"
+  trs:
+    - name: balance_domestic
+      tr_id: "<확인 필요>"
+      method: GET
+      path: "<확인 필요>"
+      bucket: BATCH
+      paper_supported: true
+    - name: multiprice
+      tr_id: "FHKST11300006"
+      bucket: QUOTE
+    - name: overseas_price
+      tr_id: "<확인 필요 — 공식 예제 레포, M1 카세트>"
+      bucket: QUOTE
+    - name: holiday
+      tr_id: "CTCA0903R"
+      bucket: BATCH
+    - name: fx_reference_rate
+      tr_id: "<확인 필요 — M6 FX 파이프라인 실호출(06 §9.2)>"
+      bucket: BATCH
+    - name: etf_nav
+      tr_id: "<확인 필요 — SP-E2 + 공식 문서(06 §6.4)>"
+      bucket: QUOTE
+    - name: stock_info
+      tr_id: "CTPF1002R"
+      bucket: BATCH
+ws:
+  live:
+    url: "<확인 필요 — 실전 WS 도메인>"
+    port: 21000
+    tr:
+      exec_notice_domestic: "H0STCNI0"
+      exec_notice_overseas: "H0GSCNI0"
+      book_top: "H0STASP0"
+      market_status: "H0STMKO0"
+      quote_tick: "H0STCNT0"
+      etf_nav: "H0STNAV0"
+      us_book_top: "HDFSASP0"
+      us_quote_tick: "HDFSCNT0"
+  paper:
+    url: "<확인 필요 — SP-C3b: 모의 WS 지원 여부·URL·포트>"
+    port: null
+    tr:
+      exec_notice_domestic: "<확인 필요 — SP-C3b: prefix 치환 불성립>"
+      exec_notice_overseas: "<확인 필요 — SP-C3b>"
