@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, RootModel, ValidationError
 
 from omra.config import ConfigSyntaxError, ConfigValidationError
 from omra.config.files import RecordFile
@@ -19,6 +19,12 @@ class ExampleRecord(BaseModel):
     count: int
 
 
+class ExampleSequence(RootModel[tuple[ExampleRecord, ...]]):
+    """Small sequence-root model used to exercise record document loading."""
+
+    model_config = ConfigDict(frozen=True)
+
+
 def test_record_file_preserves_source_hash_model_and_validated_data(tmp_path: Path) -> None:
     source = tmp_path / "records.yaml"
     raw = b"name: alpha\ncount: 2\n"
@@ -31,6 +37,21 @@ def test_record_file_preserves_source_hash_model_and_validated_data(tmp_path: Pa
     assert loaded.sha256 == hashlib.sha256(raw).hexdigest()
     assert loaded.model is ExampleRecord
     assert loaded.data == ExampleRecord(name="alpha", count=2)
+
+
+def test_record_file_supports_sequence_root_models_without_weakening_mapping_roots(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "sequence.yaml"
+    source.write_text("- name: alpha\n  count: 2\n- name: beta\n  count: 3\n", encoding="utf-8")
+
+    loaded = RecordFile.load(source, ExampleSequence)
+
+    assert loaded is not None
+    assert loaded.data.root == (
+        ExampleRecord(name="alpha", count=2),
+        ExampleRecord(name="beta", count=3),
+    )
 
 
 def test_record_file_distinguishes_required_and_optional_absence(tmp_path: Path) -> None:

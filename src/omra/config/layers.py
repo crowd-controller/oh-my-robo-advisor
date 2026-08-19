@@ -136,15 +136,15 @@ def deep_merge(
     return merged
 
 
-def parse_yaml_mapping(raw: bytes, *, source: Path) -> dict[str, object]:
-    """Parse one UTF-8 YAML mapping using the canonical duplicate-key rules."""
+def parse_yaml_document(raw: bytes, *, source: Path) -> object:
+    """Parse one UTF-8 YAML document using the canonical duplicate-key rules."""
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as error:
         raise ConfigSyntaxError(source, "configuration file is not valid UTF-8") from error
 
     try:
-        document = yaml.load(text, Loader=_UniqueKeyLoader)  # noqa: S506
+        document: object = yaml.load(text, Loader=_UniqueKeyLoader)  # noqa: S506
     except yaml.MarkedYAMLError as error:
         mark = error.problem_mark
         raise ConfigSyntaxError(
@@ -154,6 +154,12 @@ def parse_yaml_mapping(raw: bytes, *, source: Path) -> dict[str, object]:
             column=None if mark is None else mark.column + 1,
         ) from error
 
+    return copy.deepcopy(document)
+
+
+def parse_yaml_mapping(raw: bytes, *, source: Path) -> dict[str, object]:
+    """Parse one UTF-8 YAML mapping using the canonical document rules."""
+    document = parse_yaml_document(raw, source=source)
     if document is None:
         return {}
     if not isinstance(document, Mapping):
