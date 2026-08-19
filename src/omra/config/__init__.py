@@ -12,6 +12,7 @@ from omra.config.errors import (
     UnsupportedInEnvError,
     Violation,
 )
+from omra.config.fingerprint import ConfigFingerprint, config_fingerprint
 from omra.config.layers import (
     LayeredMapping,
     LoadedLayer,
@@ -44,6 +45,7 @@ __all__ = [
     "AppConfig",
     "ConfigConflictError",
     "ConfigError",
+    "ConfigFingerprint",
     "ConfigSyntaxError",
     "ConfigTypeConflict",
     "ConfigValidationError",
@@ -64,6 +66,7 @@ __all__ = [
     "Violation",
     "apply_overrides",
     "check_credential_placement",
+    "config_fingerprint",
     "deep_merge",
     "has_smtp",
     "has_telegram",
