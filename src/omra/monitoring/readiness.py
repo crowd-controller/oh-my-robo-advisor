@@ -157,7 +157,7 @@ class ReadinessProbe:
     def _check_database(self) -> ReadinessCheck:
         try:
             with self._read_only_connection() as connection:
-                connection.execute("SELECT 1").fetchone()
+                connection.execute("PRAGMA schema_version").fetchone()
         except (OSError, sqlite3.Error):
             return self._fail("database", "database_unavailable")
         return self._pass("database")
