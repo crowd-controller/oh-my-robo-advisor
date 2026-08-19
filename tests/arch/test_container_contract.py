@@ -197,3 +197,4 @@ def test_container_smoke_script_is_bounded_restores_and_cleans_up() -> None:
     assert "restore -config /etc/litestream.yml -integrity-check full" in script
     assert "smoke-sentinel" in script
     assert "down --volumes --remove-orphans" in script
+    assert "mode=ro&immutable=1" in script

@@ -37,4 +37,4 @@ compose run --rm --no-deps litestream \
 
 compose run --rm --no-deps \
     -v "$PWD/var/smoke/restore:/restore:ro" \
-    app python -c 'import sqlite3; connection = sqlite3.connect("file:/restore/omra.sqlite?mode=ro", uri=True); assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",); assert connection.execute("SELECT value FROM smoke_probe").fetchone() == ("smoke-sentinel",); connection.close()'
+    app python -c 'import sqlite3; connection = sqlite3.connect("file:/restore/omra.sqlite?mode=ro&immutable=1", uri=True); assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",); assert connection.execute("SELECT value FROM smoke_probe").fetchone() == ("smoke-sentinel",); connection.close()'

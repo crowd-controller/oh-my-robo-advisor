@@ -111,8 +111,7 @@ def test_probe_bounds_config_and_schema_failures(tmp_path: Path) -> None:
     config_dir = tmp_path / "missing-config"
     with db_path.open("r+b") as database:
         database.seek(0)
-        database.write(b"not sqlite")
-        database.truncate()
+        database.write(b"not sqlite format")
     probe = ReadinessProbe(
         config_dir=config_dir,
         db_path=db_path,
