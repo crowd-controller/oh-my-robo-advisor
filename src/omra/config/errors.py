@@ -108,3 +108,17 @@ class MissingSecrets(ConfigError):  # noqa: N818 - canonical design error name
             f"required secrets are missing: {', '.join(self.names)}",
             code="config.secrets_missing",
         )
+
+
+class UnsupportedInEnvError(ConfigError):
+    """Unresolved configuration values are unsafe in the requested environment."""
+
+    def __init__(self, env: str, paths: Iterable[str]) -> None:
+        self.env = env
+        self.paths = tuple(dict.fromkeys(paths))
+        if not self.paths:
+            raise ValueError("UnsupportedInEnvError requires at least one path")
+        super().__init__(
+            f"unresolved configuration is unsupported in {env}: {', '.join(self.paths)}",
+            code="config.unsupported_in_env",
+        )

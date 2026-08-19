@@ -8,12 +8,14 @@ from omra.config import (
     MissingSecrets,
     Secrets,
     SecretSpec,
+    UnsupportedInEnvError,
     check_credential_placement,
     has_smtp,
     has_telegram,
     load_secrets,
 )
 from omra.config.errors import MissingSecrets as ModuleMissingSecrets
+from omra.config.errors import UnsupportedInEnvError as ModuleUnsupportedInEnvError
 from omra.config.files import (
     AutoAction,
     EquityRegions,
@@ -27,15 +29,23 @@ from omra.config.files import (
     GoalsFile,
     MarketWeightsFile,
     RecordFile,
+    RestBaseUrls,
+    RestSection,
+    RestTr,
     SecretRegistryEntry,
     SecretsRegistryFile,
     SecretTier,
     SurveillanceMapFile,
     SurvMapEntry,
     TargetsFile,
+    TrIdsRaw,
     UniverseFile,
     UniverseInstrument,
     WithdrawalCfg,
+    WsEndpoint,
+    WsSection,
+    WsTrTable,
+    validate_tr_ids_for_env,
 )
 from omra.config.files.base import RecordFile as BaseRecordFile
 from omra.config.files.goals import (
@@ -76,6 +86,18 @@ from omra.config.files.surveillance_map import (
 )
 from omra.config.files.surveillance_map import SurvMapEntry as ModuleSurvMapEntry
 from omra.config.files.targets import TargetsFile as ModuleTargetsFile
+from omra.config.files.trids import (
+    RestBaseUrls as ModuleRestBaseUrls,
+)
+from omra.config.files.trids import RestSection as ModuleRestSection
+from omra.config.files.trids import RestTr as ModuleRestTr
+from omra.config.files.trids import TrIdsRaw as ModuleTrIdsRaw
+from omra.config.files.trids import WsEndpoint as ModuleWsEndpoint
+from omra.config.files.trids import WsSection as ModuleWsSection
+from omra.config.files.trids import WsTrTable as ModuleWsTrTable
+from omra.config.files.trids import (
+    validate_tr_ids_for_env as module_validate_tr_ids_for_env,
+)
 from omra.config.files.universe import (
     UniverseFile as ModuleUniverseFile,
 )
@@ -126,6 +148,7 @@ def test_secret_loader_public_coordinates_are_stable() -> None:
     assert has_smtp is module_has_smtp
     assert has_telegram is module_has_telegram
     assert load_secrets is module_load_secrets
+    assert UnsupportedInEnvError is ModuleUnsupportedInEnvError
 
 
 def test_record_file_public_coordinates_are_stable() -> None:
@@ -150,3 +173,11 @@ def test_record_file_public_coordinates_are_stable() -> None:
     assert MarketWeightsFile is ModuleMarketWeightsFile
     assert UniverseFile is ModuleUniverseFile
     assert UniverseInstrument is ModuleUniverseInstrument
+    assert RestBaseUrls is ModuleRestBaseUrls
+    assert RestSection is ModuleRestSection
+    assert RestTr is ModuleRestTr
+    assert TrIdsRaw is ModuleTrIdsRaw
+    assert WsEndpoint is ModuleWsEndpoint
+    assert WsSection is ModuleWsSection
+    assert WsTrTable is ModuleWsTrTable
+    assert validate_tr_ids_for_env is module_validate_tr_ids_for_env
