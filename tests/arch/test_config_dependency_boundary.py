@@ -5,6 +5,7 @@ from pathlib import Path
 
 from omra.config import (
     CATALOG,
+    ConfigFingerprint,
     EffectiveVersionMissing,
     MissingSecrets,
     Secrets,
@@ -12,6 +13,7 @@ from omra.config import (
     UnsupportedInEnvError,
     VersionedFile,
     check_credential_placement,
+    config_fingerprint,
     has_smtp,
     has_telegram,
     load_secrets,
@@ -117,6 +119,8 @@ from omra.config.files.universe import (
 from omra.config.files.universe import (
     UniverseInstrument as ModuleUniverseInstrument,
 )
+from omra.config.fingerprint import ConfigFingerprint as ModuleConfigFingerprint
+from omra.config.fingerprint import config_fingerprint as module_config_fingerprint
 from omra.config.secrets import CATALOG as MODULE_CATALOG
 from omra.config.secrets import Secrets as ModuleSecrets
 from omra.config.secrets import SecretSpec as ModuleSecretSpec
@@ -163,6 +167,11 @@ def test_secret_loader_public_coordinates_are_stable() -> None:
     assert has_telegram is module_has_telegram
     assert load_secrets is module_load_secrets
     assert UnsupportedInEnvError is ModuleUnsupportedInEnvError
+
+
+def test_fingerprint_public_coordinates_are_stable() -> None:
+    assert ConfigFingerprint is ModuleConfigFingerprint
+    assert config_fingerprint is module_config_fingerprint
 
 
 def test_versioned_file_public_coordinates_are_stable() -> None:
