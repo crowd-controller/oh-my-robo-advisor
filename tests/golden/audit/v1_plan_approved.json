@@ -1,0 +1,18 @@
+{
+  "actor": "user",
+  "correlation": {
+    "change_id": null,
+    "order_id": null,
+    "plan_id": null,
+    "run_id": null,
+    "source_event_id": null
+  },
+  "event_id": "01J00000000000000000000000",
+  "event_type": "plan_approved",
+  "payload": {
+    "plan_id": "PLAN-1",
+    "reason": null
+  },
+  "schema_version": 1,
+  "ts_kst": "2026-08-19T12:34:56+09:00"
+}

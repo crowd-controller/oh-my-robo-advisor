@@ -1,6 +1,7 @@
 """Unit contracts for structured OMRA errors."""
 
-from omra.core import InvariantViolation, OmraError
+from omra.audit import AuditError, AuditWriteError
+from omra.core import InvariantViolation, OmraError, PersistenceError
 
 
 def test_omra_error_exposes_stable_audit_payload_without_aliasing_context() -> None:
@@ -16,4 +17,13 @@ def test_omra_error_exposes_stable_audit_payload_without_aliasing_context() -> N
         "retryable": False,
         "context": {"field": "amount"},
     }
+    assert isinstance(error, OmraError)
+
+
+def test_audit_write_error_belongs_to_the_persistence_error_hierarchy() -> None:
+    error = AuditWriteError("disk unavailable")
+
+    assert error.code == "audit.write_error"
+    assert isinstance(error, AuditError)
+    assert isinstance(error, PersistenceError)
     assert isinstance(error, OmraError)

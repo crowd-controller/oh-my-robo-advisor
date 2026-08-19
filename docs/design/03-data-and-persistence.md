@@ -59,10 +59,13 @@ src/omra/persistence/
 
 src/omra/audit/
 ├── __init__.py
+├── errors.py            # 검증·읽기·내구 쓰기 오류 계층 (PersistenceError 하위)
 ├── events.py            # 이벤트 봉투·event_type·payload 스키마 (pydantic)          (§7.1~7.2)
 ├── logger.py            # append-only JSONL 라이터                                  (§7.4)
-└── masking.py           # 마스킹 필터 — 카세트 녹화와 코드 공유 (정본: 01 §6.3)
+└── reader.py            # schema_version=1 하위 호환 JSONL 리더                     (§7.4)
 ```
+
+마스킹 구현의 단일 소유 좌표는 [05](05-broker-gateway.md) §3.7 [DD-05-4]의 `src/omra/brokers/masking.py`다. 감사 라이터와 카세트 녹화 경계가 이 모듈을 함께 import한다.
 
 관측 4레이어별 허용 repo 집합(완전열거)은 01 §2.2가 유일한 원문이다: `research` → `research_extractions` 1개 / `surveillance` → `surveillance_flags`·`pending_tax_events` 2개 / `labs` → `experiments`·`budget` 2개 / `realtime` → 0개 / `execution` → `execution_state` 포함 코어 repos.
 
@@ -1343,7 +1346,7 @@ class UnmatchedFillPayload(BaseModel, frozen=True):          # unmatched_fill (0
 | 경로(라이브) | `var/logs/audit/{yyyy-mm}.jsonl` — 월 파일, append-only, 로테이션 없음 (정본: 01 §6.3) |
 | 경로(시뮬) | `var/logs/audit/backtest/<run_id>.jsonl` — **봉투·payload 스키마는 라이브와 동일**, 봉투의 `actor="labs"`·`correlation.run_id = <백테스트 run_id>`. 라이브 월 파일을 오염시키지 않는다 (요청 출처: 15 [DD-15-13]·§18-19) [DD-03-35] |
 | 인코딩 | UTF-8, 1행 1이벤트, `\n` 종결. 행 내 개행 금지(JSON 직렬화가 보장) |
-| 마스킹 | `CANO`·`ACNT_PRDT_CD`·`HTS_ID`·`appkey`·`appsecret`·접근토큰 → `"***"`, 계좌 식별은 내부 `account_id`로 대체. **카세트 녹화 필터와 같은 코드**(`audit/masking.py` — 03 §4.2와 공유, 정본: 01 §6.3) |
+| 마스킹 | `CANO`·`ACNT_PRDT_CD`·`HTS_ID`·`appkey`·`appsecret`·접근토큰 → `"***"`, 계좌 식별은 내부 `account_id`로 대체. **카세트 녹화 필터와 같은 코드**(`brokers/masking.py` — [05](05-broker-gateway.md) §3.7 [DD-05-4], 정본: 01 §6.3) |
 | WS 원문 | 전량 저장하지 않는다. 체결통보 원문만 주문 감사 정책을 따른다 (01 §6.3) |
 | 백업 | restic — 당일분 5분 증분 + 확정 월파일 일 1회 (정본: 01 §6.5) |
 | 운영 로그와 분리 | structlog 운영 로그(`app-{date}.jsonl`, 14일 로테이션)는 감사로그가 아니다 (01 §6.3) |
@@ -1358,13 +1361,15 @@ class AuditLogger:
              actor: str, correlation: Correlation | None = None) -> str:
         """event_id(ULID)를 생성해 반환. 절차:
         1. 봉투 조립 → pydantic 검증 (payload 타입이 event_type 레지스트리와 일치해야 함)
-        2. masking.apply(dict) — 마스킹은 직렬화 직전 마지막 단계
+        2. brokers.masking.Masker.mask(dict) — 마스킹은 직렬화 직전 마지막 단계
         3. f.write(line); f.flush(); os.fsync(f.fileno())
         4. 실패 시: 감사 기록 실패는 삼키지 않는다 — AuditWriteError를 호출자에 전파.
            주문 경로 호출자는 이를 fail-safe(사이클 스킵 — 03 §3)로 처리한다."""
 
     def rollover_check(self) -> None: ...   # ts_kst 월 != 현재 파일 월이면 새 파일 오픈
 ```
+
+`audit/reader.py`의 v1 리더는 봉투·correlation·등록 payload의 추가 미지 필드를 무시하되, 손상 JSON·미지원 `schema_version`·미등록 `event_type`·필수 필드 손실은 `AuditReadError`로 거부한다. 추가 필드 허용은 순방향 호환이고, 이벤트 의미 자체가 미지인 타입을 묵인하는 것은 재구성 가능성을 깨므로 허용하지 않는다.
 
 > **[DD-03-22] fsync·실패 전파 정책**
 > - 결정: 이벤트마다 `flush + fsync`. 감사 기록 실패는 예외로 전파하며, 주문 경로에서는 "기록 못 하면 결정하지 않는다"로 처리한다(집행 전 기록 이벤트에 한함 — 사후 기록 이벤트는 warning + 재시도 1회).
@@ -1376,10 +1381,10 @@ class AuditLogger:
 - `guard_verdict` 이벤트에 `counterfactual` 또는 `blocked_by` 누락 시 pydantic 검증 실패 (03 §4.3 F13 연계).
 - `blocked_by` 8값 → TE 항목(①③④) 전수 매핑 테스트 — 15 §7.4 `decompose()`와 같은 표를 쓰는지 대조.
 - 시뮬 감사로그가 `var/logs/audit/backtest/<run_id>.jsonl`에만 쓰이고 라이브 월 파일에 한 줄도 섞이지 않음.
-- 마스킹 필터: 실계좌번호 패턴 주입 → 출력 라인에 원문 부재(카세트 필터와 동일 케이스 세트 — 두 벌 금지 검증).
+- 마스킹 필터: 실계좌 키 형태의 더미 값과 주입된 더미 시크릿 값 → 출력 라인에 원문 부재(카세트 필터와 동일 케이스 세트 — 두 벌 금지 검증).
 - 월 전환: 23:59:59→00:00:00 경계에서 파일 교체·이벤트 유실 0.
 - 리더 하위 호환: `schema_version=1` 리더가 미지 필드 포함 라인을 무시하고 파싱.
-- fsync 실패 주입(디스크 풀) 시 주문 경로가 사이클 스킵으로 전이.
+- fsync 실패 주입(디스크 풀) 시 `AuditWriteError`가 전파된다. 주문 경로의 사이클 스킵 연결은 주문 오케스트레이터 구현 시 같은 오류를 소비해 검증한다.
 
 ## 8. 백업·복구
 

@@ -37,6 +37,10 @@ _FIRST_LEVEL_PACKAGES = frozenset(
 )
 
 _REQUIRED_COORDINATES = (
+    "omra.audit.events",
+    "omra.audit.logger",
+    "omra.audit.reader",
+    "omra.brokers.masking",
     "omra.brokers.kis.client",
     "omra.brokers.kis.ws.events",
     "omra.brokers.upbit.client",
