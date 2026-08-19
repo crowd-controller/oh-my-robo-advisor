@@ -1,5 +1,6 @@
 """Fail-fast configuration errors with actionable source locations."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -94,3 +95,16 @@ class UnknownOverrideError(ConfigError):
 
 class ConfigConflictError(ConfigError):
     """Two explicit configuration declarations are mutually inconsistent."""
+
+
+class MissingSecrets(ConfigError):  # noqa: N818 - canonical design error name
+    """Required environment-only secret names are absent."""
+
+    def __init__(self, names: Iterable[str]) -> None:
+        self.names = tuple(sorted(set(names)))
+        if not self.names:
+            raise ValueError("MissingSecrets requires at least one secret name")
+        super().__init__(
+            f"required secrets are missing: {', '.join(self.names)}",
+            code="config.secrets_missing",
+        )
