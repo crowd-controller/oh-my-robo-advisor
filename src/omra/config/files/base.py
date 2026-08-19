@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ValidationError
 
 from omra.config.errors import ConfigValidationError, Violation
-from omra.config.layers import parse_yaml_mapping
+from omra.config.layers import parse_yaml_document, parse_yaml_mapping
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,7 +54,7 @@ class RecordFile[RecordT: BaseModel]:
         *,
         required: bool = True,
     ) -> RecordFile[RecordT] | None:
-        """Load one YAML mapping and flatten model failures into source-aware violations."""
+        """Load one YAML document and flatten model failures into source-aware violations."""
         try:
             raw = path.read_bytes()
         except FileNotFoundError as error:
@@ -80,7 +80,11 @@ class RecordFile[RecordT: BaseModel]:
                 )
             ) from error
 
-        values = parse_yaml_mapping(raw, source=path)
+        values = (
+            parse_yaml_document(raw, source=path)
+            if model.__pydantic_root_model__
+            else parse_yaml_mapping(raw, source=path)
+        )
         try:
             data = model.model_validate(values)
         except ValidationError as error:
