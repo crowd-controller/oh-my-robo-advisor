@@ -3,8 +3,42 @@
 import ast
 from pathlib import Path
 
-from omra.config.files import RecordFile, UniverseFile, UniverseInstrument
+from omra.config.files import (
+    EquityRegions,
+    GlidePathBand,
+    GlidePathCfg,
+    Goal,
+    GoalsFile,
+    MarketWeightsFile,
+    RecordFile,
+    TargetsFile,
+    UniverseFile,
+    UniverseInstrument,
+    WithdrawalCfg,
+)
 from omra.config.files.base import RecordFile as BaseRecordFile
+from omra.config.files.goals import (
+    GlidePathBand as ModuleGlidePathBand,
+)
+from omra.config.files.goals import (
+    GlidePathCfg as ModuleGlidePathCfg,
+)
+from omra.config.files.goals import (
+    Goal as ModuleGoal,
+)
+from omra.config.files.goals import (
+    GoalsFile as ModuleGoalsFile,
+)
+from omra.config.files.goals import (
+    WithdrawalCfg as ModuleWithdrawalCfg,
+)
+from omra.config.files.market_weights import (
+    EquityRegions as ModuleEquityRegions,
+)
+from omra.config.files.market_weights import (
+    MarketWeightsFile as ModuleMarketWeightsFile,
+)
+from omra.config.files.targets import TargetsFile as ModuleTargetsFile
 from omra.config.files.universe import (
     UniverseFile as ModuleUniverseFile,
 )
@@ -41,5 +75,13 @@ def test_config_only_imports_config_or_core_inside_omra() -> None:
 
 def test_record_file_public_coordinates_are_stable() -> None:
     assert RecordFile is BaseRecordFile
+    assert TargetsFile is ModuleTargetsFile
+    assert Goal is ModuleGoal
+    assert GlidePathBand is ModuleGlidePathBand
+    assert GlidePathCfg is ModuleGlidePathCfg
+    assert WithdrawalCfg is ModuleWithdrawalCfg
+    assert GoalsFile is ModuleGoalsFile
+    assert EquityRegions is ModuleEquityRegions
+    assert MarketWeightsFile is ModuleMarketWeightsFile
     assert UniverseFile is ModuleUniverseFile
     assert UniverseInstrument is ModuleUniverseInstrument
