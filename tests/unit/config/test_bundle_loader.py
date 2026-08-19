@@ -17,6 +17,14 @@ from omra.config import (
 )
 from omra.core import SimClock
 
+_RETIRED_LAW_ALIASES = (
+    ("tax", "deduction", 2_500_000),
+    ("tax", "isa_free_limit", 2_000_000),
+    ("tax", "crypto_tax_enabled", False),
+    ("waterfall", "pension_deduct_cap_total", 9_000_000),
+    ("waterfall", "pension_deduct_cap_savings", 6_000_000),
+)
+
 
 @pytest.fixture(autouse=True)
 def _clear_omra_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -279,6 +287,40 @@ def test_loader_applies_default_path_env_override_then_cli_precedence(
     )
 
     assert bundle.app.runtime.fill_queue_warn == 456
+
+
+@pytest.mark.parametrize(("root", "field", "value"), _RETIRED_LAW_ALIASES)
+def test_loader_rejects_retired_law_aliases_from_yaml_and_environment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    root: str,
+    field: str,
+    value: object,
+) -> None:
+    config_dir = _config_dir(tmp_path)
+    app_values = _app_values()
+    section = app_values[root]
+    assert isinstance(section, dict)
+    section[field] = value
+    _write_yaml(config_dir / "config.yaml", app_values)
+
+    with pytest.raises(ConfigValidationError) as yaml_error:
+        load_and_validate_config(config_dir, clock=_clock())
+
+    assert tuple((violation.code, violation.path) for violation in yaml_error.value.violations) == (
+        ("extra_forbidden", f"{root}.{field}"),
+    )
+
+    _write_yaml(config_dir / "config.yaml", _app_values())
+    variable = f"OMRA__{root.upper()}__{field.upper()}"
+    monkeypatch.setenv(variable, "1")
+
+    with pytest.raises(ConfigValidationError) as env_error:
+        load_and_validate_config(config_dir, clock=_clock())
+
+    assert tuple((violation.code, violation.path) for violation in env_error.value.violations) == (
+        ("unknown_override", f"{root}.{field}"),
+    )
 
 
 def test_loader_aggregates_scalar_and_independent_record_failures(tmp_path: Path) -> None:

@@ -192,8 +192,8 @@ E7 면제 판정 키는 08 §14.4 불변식 5·09 §6.1 단계 2.5와 **같은 �
 
 > **[DD-10-16] 세법 파라미터 이중 정의 해소 — `tax.yaml` = 법령값 정본, `config.yaml` = 운영 스위치·사용자 입력 정본**
 > - 결정: ① **세율·공제·한도(법령값)** 는 `tax.yaml`의 effective-date 버전 하나만 정본으로 두고, 소비 모델 `TaxParams`는 04 §5.8 `tax.yaml` `params:` 블록과 **필드 대 필드로 일치**시킨다(아래 코드). ② **운영 스위치·사용자 입력·알림 티어**(하베스팅 시즌 시작일·재매수 버퍼·자동 실행 승격·과표기준가 소스·금소세 티어 집합·ISA 사용자 입력·건보 자격·한계세율·gap check 일자/리마인더·이체 예약 만료일·`fill_pension_to_limit`)는 `config.yaml`의 `tax.*`·`waterfall.*` 하나만 정본으로 두고 그 스키마 소유는 04 §4.2(`TaxCfg`·`WaterfallCfg`)다 — tax는 재정의하지 않고 주입받는다. ③ 따라서 tax 엔진에 주입되는 것은 두 출처의 **결합 뷰** `TaxSettings`이며, 이 문서의 다른 절이 `params.X`로 쓰는 이름은 아래 소속표대로 `settings.law.X` 또는 `settings.cfg.X`/`settings.waterfall.X`로 읽는다.
-> - 근거: 04 §14-15의 조율 요청("같은 법령값의 출처가 둘이면 개정 때 한쪽만 갱신된다")과 그 권고 방향(법령값은 `tax.yaml` 단일 정본)을 수용한다. 02 §5.5가 "세율·공제·한도는 `tax.yaml`에 effective-date 버전으로"를 명시하므로 법령값의 귀속은 계획이 이미 정했고, 반대로 사용자 입력(ISA 계약 개시일·건보 자격)은 effective-date 축이 없어 버전 파일에 둘 이유가 없다. 이 분리가 서면 04의 상호 제약 C-29(두 곳의 값 불일치 시 `ConfigConflictError`)는 **교집합이 사라져 무효 조건**이 되므로 04에 제거를 요청한다(§17 #17).
-> - 계획 문서와의 관계: 02 §5.5의 귀속 규정을 그대로 따르고, 02 부록 A의 `tax.deduction`·`tax.isa_free_limit`·`waterfall.pension_deduct_cap_*` 행은 04 §14-15 권고대로 "`tax.yaml`의 같은 값을 가리키는 별칭"으로 재해석한다(`AppConfig` 필드에서 제거 — 04 소유 작업). 요청 출처: 04 §14-15. 충돌 없음.
+> - 근거: 04 §14-15의 조율 요청("같은 법령값의 출처가 둘이면 개정 때 한쪽만 갱신된다")과 그 권고 방향(법령값은 `tax.yaml` 단일 정본)을 수용한다. 02 §5.5가 "세율·공제·한도는 `tax.yaml`에 effective-date 버전으로"를 명시하므로 법령값의 귀속은 계획이 이미 정했고, 반대로 사용자 입력(ISA 계약 개시일·건보 자격)은 effective-date 축이 없어 버전 파일에 둘 이유가 없다. 04 [DD-04-21]이 config 별칭을 제거하고 C-29를 ID 재사용 없이 폐기해 교집합을 실제로 없앴다.
+> - 계획 문서와의 관계: 02 §5.5의 귀속 규정을 그대로 따르고, 02 부록 A의 과거 `tax.deduction`·`tax.isa_free_limit`·`waterfall.pension_deduct_cap_*` 행을 실제 `tax.yaml params.*` 좌표로 명시했다. `AppConfig`에는 이 별칭을 두지 않는다. 충돌 없음.
 
 ```python
 # src/omra/tax/params.py
@@ -207,7 +207,7 @@ class TaxParams(BaseModel, frozen=True):
 
     # 해외주식 양도세 (정본: 05 §2.3)
     overseas_cg_rate: Decimal = Decimal("0.22")               # 20% + 지방세 2%
-    overseas_cg_deduction_krw: Decimal = Decimal("2500000")   # 02 부록 A `tax.deduction`의 정본 값
+    overseas_cg_deduction_krw: Decimal = Decimal("2500000")   # 02 부록 A `tax.yaml params.*`
 
     # 국내상장 해외 ETF / 배당 (정본: 05 §2.3)
     dividend_wht_rate: Decimal = Decimal("0.154")
@@ -242,8 +242,17 @@ class TaxSettings(BaseModel, frozen=True):
 | 이름 | 출처 | 비고 |
 |---|---|---|
 | `overseas_cg_rate` · `overseas_cg_deduction_krw` · `dividend_wht_rate` · `fin_income_aggregate_threshold_krw` · `isa_free_limit_krw` · `isa_excess_rate` · `isa_annual_contrib_cap_krw` · `pension_deduct_cap_*` · `pension_contrib_cap_total_krw` · `harvest_cost_gate_factor` · `harvest_annual_nav_cap` · `crypto_tax_enabled` | `settings.law.*` (`tax.yaml`) | 법령값 — effective-date 버전 축 |
-| `income_alerts`(api/fallback 두 집합·mapping) · `basis_price_source` · `harvest_start` · `harvest_rebuy_buffer_pct` · `harvest_auto_enabled` · `isa_usage_alert` · `isa_contract_start_date` · `isa_usage_opening_amount` · `isa_usage_opening_as_of` · `health_insurance_status` · `user_marginal_credit_rate` · `deduction`·`isa_free_limit`(02 부록 A 별칭) | `settings.cfg.*` (04 §4.2 `TaxCfg`) | 운영 스위치·사용자 입력. `_krw` 접미를 붙이지 않는다(키 이름 규칙: 04 §4.1 규칙 1) |
+| `income_alerts`(api/fallback 두 집합·mapping) · `basis_price_source` · `harvest_start` · `harvest_rebuy_buffer_pct` · `harvest_auto_enabled` · `isa_usage_alert` · `isa_contract_start_date` · `isa_usage_opening_amount` · `isa_usage_opening_as_of` · `health_insurance_status` · `user_marginal_credit_rate` | `settings.cfg.*` (04 §4.2 `TaxCfg`) | 운영 스위치·사용자 입력 — effective-date 법령값 없음 |
 | `fill_pension_to_limit` · `gap_check_date` · `reminders`(D-12/D-5/D-1) · `transfer_reserve_expiry_days` | `settings.waterfall.*` (04 §4.2 `WaterfallCfg`) | 워터폴 운영 파라미터 |
+
+과거 config 별칭은 다음 법령 좌표로만 해석한다. 왼쪽 경로는 더 이상 입력으로 수용하지 않는다.
+
+| 폐기된 config 경로 | 단일 정본 좌표 |
+|---|---|
+| `tax.deduction` | `tax.yaml params.overseas_cg_deduction_krw` |
+| `tax.isa_free_limit` | `tax.yaml params.isa_free_limit_krw` |
+| `tax.crypto_tax_enabled` | `tax.yaml params.crypto_tax_enabled` |
+| `waterfall.pension_deduct_cap_total` / `.pension_deduct_cap_savings` | `tax.yaml params.pension_deduct_cap_total_krw` / `.pension_deduct_cap_savings_krw` |
 
 `income_alerts`는 스칼라 목록이 아니라 **mapping**이며 두 집합의 값(api = 1,000/1,200/1,600/1,800만, fallback = 1,000/1,400/1,800/1,900만)의 정본은 02 §5.3이다(스키마: 04 §4.2 `IncomeAlertSets`).
 
@@ -1291,5 +1300,5 @@ def due_slices(self, asof: date, state: BotStateView) -> list[OrderDraft]:
 | 14 | ~~E7 기집행 수량(`executed_qty`)의 보관 위치~~ | **해소** | 03 [DD-03-36]이 전용 컬럼을 기각하고 `fills ⨝ orders(intent='e7_transfer')` 파생으로 확정(§14.3 반영, 파생 질의 계약 03 §3.5) |
 | 15 | ~~`PlannedOrder.origin` 값 집합(8종)의 확정~~ | **해소** | 02 [DD-02-17]이 `OrderIntent` 11값으로 단일화하고 방향 세분을 `intent × side`로 확정. §2.2 정규화표로 교체하고 §13.2·§13.3·§14.3 분기를 그에 맞춰 재작성(타입명 `OrderOrigin`·필드명 `PlannedOrder.origin` 폐지) |
 | 16 | ~~`UnexecutedOrder.blocked_by`에 세금 사유 값이 없다~~ | **해소** | 03 [DD-03-34]가 `BlockedBy` 8값(02 §8.1.1 6값 + `TAX_SOFT_STOP`·`TAX_ISA_LIMIT`)과 TE ① 귀속 사상을 확정(§13.3 반영). 15 §7.3도 03 §7.2 참조로 정정됨 |
-| 17 | 04 상호 제약 **C-29**(`config.yaml`과 `tax.yaml`의 동명 키 값 일치 강제)는 [DD-10-16]의 분리가 서면 **교집합이 사라져 무효 조건**이 된다 | 04 문서 소유 — 제거 요청 | 04 §14-15 권고대로 02 부록 A의 `tax.deduction`·`tax.isa_free_limit`·`waterfall.pension_deduct_cap_*`를 `tax.yaml` 별칭으로 재해석해 `AppConfig`에서 제거하고, [DD-04-4] 검사 ⓒ에 "`tax.yaml` 스키마 키는 `AppConfig` 필드가 없어도 통과" 예외를 추가한다. **10·04 동시 반영 필요** |
+| 17 | ~~04 상호 제약 C-29와 세법 법령값 이중 정의~~ **해소** | — | 04 [DD-04-21]이 config 별칭 5개를 제거하고 계획 02의 법령 좌표를 `tax.yaml params.*`로 명시했다. C-29는 ID 재사용 없이 폐기됐다 |
 | 18 | `pending_transfer_reserve` 파생 조건의 상태 범위 — 03 §3.5·07 §9·09는 `state='PENDING'`만 세는데 02 §4.2 정의는 "승인 대기 **또는 승인·미이행**"이다 | 03(파생 질의 계약)·07·09와 조율 | 값 산출 소유는 10이므로 §6.4의 정의(PENDING + `APPROVED ∧ payload_json.fulfilled_at IS NULL`)를 정본으로 두고 파생 조건 확장을 요청한다. 미반영 시 승인~입금 확인 구간에 cash-flow first가 이체 예정 현금을 소진할 수 있다 |

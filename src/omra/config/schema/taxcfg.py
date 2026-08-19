@@ -45,10 +45,8 @@ class IncomeAlertSets(_FrozenModel):
 
 class TaxCfg(_FrozenModel):
     harvest_start: str = "11-25"
-    deduction: int = 2_500_000
     income_alerts: IncomeAlertSets = Field(default_factory=IncomeAlertSets)
     basis_price_source: Literal["api", "fallback"] = "fallback"
-    isa_free_limit: int = 2_000_000
     isa_usage_alert: Dec = Decimal("0.70")
     isa_contract_start_date: date | None = None
     isa_usage_opening_amount: int | None = None
@@ -56,14 +54,11 @@ class TaxCfg(_FrozenModel):
     harvest_rebuy_buffer_pct: Dec = Decimal("0.005")
     health_insurance_status: Literal["employee", "regional", "dependent"] = "regional"
     user_marginal_credit_rate: Dec = Decimal("0.132")
-    crypto_tax_enabled: bool = False
     harvest_auto_enabled: bool = False
 
 
 class WaterfallCfg(_FrozenModel):
     fill_pension_to_limit: bool = False
-    pension_deduct_cap_total: int = 9_000_000
-    pension_deduct_cap_savings: int = 6_000_000
     gap_check_date: str = "11-01"
     reminders: tuple[str, ...] = ("12-08", "12-15", "12-19")
     transfer_reserve_expiry_days: int = 7

@@ -236,9 +236,10 @@ def _planner_total(bundle: ConfigBundle) -> int:
 def check_all(bundle: ConfigBundle) -> list[ConstraintViolation]:  # noqa: PLR0915
     """Return every bundle-resident constraint violation in canonical ID order.
 
-    C-3 requires persisted budget counters, C-29 requires a Clock-selected tax
-    version, and C-21's account-number equality requires Secrets. Those contextual
-    checks remain outside this bundle-only boundary.
+    C-3 requires persisted budget counters, and C-21's account-number equality
+    requires Secrets. Those contextual checks remain outside this bundle-only
+    boundary. C-29 was retired when DD-10-16 removed duplicated law values from
+    AppConfig; its ID is intentionally not reused.
     """
     app = bundle.app
     violations: list[ConstraintViolation] = []

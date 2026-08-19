@@ -70,6 +70,8 @@ from omra.config.versioned import VersionedFile
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
+
     from omra.core import Clock
 
 
@@ -161,11 +163,27 @@ def _config_error_violations(  # noqa: PLR0911 - explicit exception-to-violation
     return (Violation(code="config_error", message=str(error), source=source),)
 
 
+class _KnownShapeConfig(AppConfig):
+    """Validate defaults for override shape discovery without ambient sources."""
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        del cls, settings_cls, env_settings, dotenv_settings, file_secret_settings
+        return (init_settings,)
+
+
 def _known_app_shape() -> Mapping[str, object]:
     values: dict[str, object] = {name: {} for name in AppConfig.model_fields}
     values["accounts"] = []
     values["backtest"] = {"snapshot": {"absolute_floor": {}}}
-    return AppConfig.model_validate(values).model_dump(mode="python")
+    return _KnownShapeConfig.model_validate(values).model_dump(mode="python")
 
 
 def _load_record[RecordT: BaseModel](
