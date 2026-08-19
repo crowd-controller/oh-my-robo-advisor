@@ -3,7 +3,16 @@
 import ast
 from pathlib import Path
 
-from omra.config import CATALOG, MissingSecrets, Secrets, SecretSpec, load_secrets
+from omra.config import (
+    CATALOG,
+    MissingSecrets,
+    Secrets,
+    SecretSpec,
+    check_credential_placement,
+    has_smtp,
+    has_telegram,
+    load_secrets,
+)
 from omra.config.errors import MissingSecrets as ModuleMissingSecrets
 from omra.config.files import (
     AutoAction,
@@ -76,6 +85,9 @@ from omra.config.files.universe import (
 from omra.config.secrets import CATALOG as MODULE_CATALOG
 from omra.config.secrets import Secrets as ModuleSecrets
 from omra.config.secrets import SecretSpec as ModuleSecretSpec
+from omra.config.secrets import check_credential_placement as module_check_credential_placement
+from omra.config.secrets import has_smtp as module_has_smtp
+from omra.config.secrets import has_telegram as module_has_telegram
 from omra.config.secrets import load_secrets as module_load_secrets
 
 _CONFIG_ROOT = Path(__file__).resolve().parents[2] / "src" / "omra" / "config"
@@ -110,6 +122,9 @@ def test_secret_loader_public_coordinates_are_stable() -> None:
     assert MissingSecrets is ModuleMissingSecrets
     assert SecretSpec is ModuleSecretSpec
     assert Secrets is ModuleSecrets
+    assert check_credential_placement is module_check_credential_placement
+    assert has_smtp is module_has_smtp
+    assert has_telegram is module_has_telegram
     assert load_secrets is module_load_secrets
 
 
