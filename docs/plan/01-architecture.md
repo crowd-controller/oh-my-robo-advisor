@@ -144,41 +144,72 @@ CREATE TABLE policy_versions (    -- §6.1 산출물 버전 포인터
 
 ```yaml
 services:
-  app:          # 봇 엔진 + 스케줄러 + FastAPI + Telegram + T0 WS (단일 프로세스)
+  app:
+    image: omra-app:${OMRA_IMAGE_TAG:-local}
     build: .
+    init: true
     restart: unless-stopped
-    env_file: [.env]                  # 시크릿 (chmod 600, git 제외)
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OMRA__RUNTIME__ROLE: app
     volumes:
       - ./config:/app/config:ro
-      - omra-db:/app/var/db           # SQLite
-      - omra-data:/app/var/data       # Parquet
-      - omra-logs:/app/var/logs       # 로그/감사
-      - omra-policy:/app/var/policy   # ★ 잡이 생성하는 정책 산출물(targets/universe) — rw
+      - omra-db:/app/var/db
+      - omra-data:/app/var/data
+      - omra-logs:/app/var/logs
+      - omra-policy:/app/var/policy
     ports:
-      - "100.x.y.z:8080:8080"         # Tailscale 인터페이스에만 바인딩
+      - "${OMRA_BIND_ADDRESS:-127.0.0.1}:${OMRA_PORT:-8080}:8080"
     healthcheck:
-      test: ["CMD", "python", "-m", "omra.cli", "health"]
-      interval: 60s
+      test: [CMD, python, -m, omra.cli, ready]
+    logging:
+      driver: json-file
+      options: {max-size: 50m, max-file: "3"}
 
-  litestream:   # SQLite 실시간 복제 (S3 호환 스토리지)
-    image: litestream/litestream
+  litestream:
+    image: litestream/litestream:0.5.16@sha256:f085f8bce71a5ad4ce8e28b28ea522de1d9e0d7dd0af3ea5c1bd626d0f341954
     restart: unless-stopped
-    depends_on: [app]
-    command: replicate -config /etc/litestream.yml
-    env_file: [.env.litestream]      # ★ 오브젝트 스토리지 키만
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    command: [replicate, -config, /etc/litestream.yml]
+    env_file:
+      - path: .env.litestream
+        required: false
+    depends_on:
+      app:
+        condition: service_healthy
     volumes:
-      - omra-db:/app/var/db          # ★ 없으면 복제 대상 파일이 보이지 않는다
+      - omra-db:/app/var/db
       - ./config/litestream.yml:/etc/litestream.yml:ro
 
-  tools:        # 일회성 실행 전용 (백테스트·리서치·챌린저 검증). 상시 기동하지 않는다
+  tools:
     build: .
-    profiles: ["tools"]              # 기본 up 대상에서 제외
-    env_file: [.env.tools]           # ★ 브로커 키 없음 — 최소권한
+    profiles: [tools]
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    env_file:
+      - path: .env.tools
+        required: false
+    environment:
+      OMRA__RUNTIME__ROLE: tools
     volumes:
       - ./config:/app/config:ro
-      - omra-data:/app/var/data      # Parquet 읽기 + RO 스냅샷 읽기 + 결과 파일 쓰기
+      - omra-data:/app/var/data
       - omra-logs:/app/var/logs
-      # ★ omra-db 를 마운트하지 않는다 — 아래 "tools의 DB 읽기 경로" 참조
+      # omra-db를 마운트하지 않는다.
 ```
 
 **세 서비스 모두 `user:`(non-root) · `read_only: true` · 필요한 `tmpfs:`를 명시한다**(§7-6 컨테이너 원칙). 쓰기는 위 named volume으로만 나간다.
@@ -205,7 +236,7 @@ services:
 
 ```
 oh-my-robo-advisor/
-├── pyproject.toml / uv.lock / Dockerfile / docker-compose.yml
+├── pyproject.toml / uv.lock / Dockerfile / compose.yaml
 ├── config/                    # ★ 사람이 편집하는 **입력물**. 컨테이너에 `:ro`로 마운트된다
 │   ├── config.yaml            # 기본 설정 (공개 가능)
 │   ├── config.live.yaml       # 실전 오버레이 / config.paper.yaml 모의 오버레이
@@ -1022,7 +1053,8 @@ approved_substitutes:            # 02 §2.2 — 1:1 페어, 교체 시 §2.3 필
 
 ### 6.4 모니터링
 
-- 내부 healthcheck(`/healthz` + CLI): heartbeat 나이, DB 쓰기, 토큰 유효, 마지막 적재 시각, 디스크, **이벤트 루프 지연(loop lag)**, **WS 세션 상태·구독 등록 수**, **감시 소스 신선도**.
+- M0 컨테이너 readiness(`/readyz` + `omra ready`)는 공개 설정 로드, DB 연결, Alembic head, 쓰기 볼륨만 확인하며 **외부 네트워크 호출은 0건**이다. 이 최소 probe는 이미지·볼륨·스키마가 요청을 받을 준비가 되었는지 판정한다.
+- M3 최종 health(`/healthz` + `omra health`)는 heartbeat 나이, DB 쓰기, 토큰 유효, 마지막 적재 시각, 디스크, **이벤트 루프 지연(loop lag)**, **WS 세션 상태·구독 등록 수**, **감시 소스 신선도**를 추가한다. readiness 성공을 최종 운영 health 성공으로 해석하지 않는다.
 - **자발적 종료 워치독 = 1차 자기복구.** ★ **Docker의 restart policy는 컨테이너 프로세스의 종료(exit)에만 반응하며 healthcheck가 산출하는 `unhealthy` 상태에는 반응하지 않는다**(Docker Engine/Compose의 문서화된 동작이며, `autoheal` 같은 사이드카가 존재하는 이유다). 따라서 §1.6의 healthcheck는 컨테이너를 `unhealthy`로 표시할 뿐 재시작을 유발하지 않는다. **이 구멍이 치명적인 이유는 §9.2가 최대 실질 위험으로 지목한 "단일 asyncio 루프 점유"와 loop lag가 정확히 "프로세스가 죽지 않고 응답만 멈추는" 실패이기 때문**이다 — exit이 없으므로 restart policy는 영원히 발동하지 않는다.
   - **채택**: 봇 프로세스 내부에 워치독 태스크를 두고 **heartbeat 갱신 실패 또는 loop lag 임계 초과가 연속 N회면 `os._exit(1)`로 자발적 종료**해 `restart: unless-stopped`를 발동시킨다. 사이드카에 `/var/run/docker.sock`을 주지 않으므로 §7 보안 원칙과 충돌하지 않는다.
   - 트리거 초기값: `heartbeat_max_age_sec: 180` / `loop_lag_exit_ms: 5000` / `consecutive: 3`(전부 M4 실측 재캘리브레이션). **크래시 루프 방지**: 10분 내 자발적 종료 3회 초과 시 재기동 후 기동 셀프체크가 `STOPPED`로 고정하고 critical.
@@ -1033,19 +1065,24 @@ approved_substitutes:            # 02 §2.2 — 1:1 페어, 교체 시 §2.3 필
 
 ### 6.5 백업
 
-**`config/litestream.yml`** (RPO≈초 주장의 근거 — 이 파일이 없으면 §1.6 서비스가 아무것도 복제하지 않는다):
+**`config/litestream.yml`** (Litestream v0.5.16, RPO≈초 주장의 근거 — 이 파일이 없으면 §1.6 서비스가 아무것도 복제하지 않는다):
 
 ```yaml
+snapshot:
+  interval: 24h
+  retention: 720h
+retention:
+  enabled: true
+validation:
+  interval: 1h
 dbs:
   - path: /app/var/db/omra.sqlite
-    replicas:
-      - type: s3
-        bucket: ${LITESTREAM_BUCKET}          # .env.litestream
-        path: omra-db
-        sync-interval: 1s                     # ★ RPO≈초의 실체
-        snapshot-interval: 24h
-        retention: 720h                       # 30일
+    replica:
+      url: ${LITESTREAM_REPLICA_URL}            # .env.litestream
+      sync-interval: 1s                          # ★ RPO≈초의 실체
 ```
+
+v0.5 정본은 DB별 단수 `replica`와 전역 `snapshot`을 사용한다. 구형 `replicas`, `snapshot-interval`, replica 내부 `retention` 표기는 사용하지 않는다.
 
 > **`weekly_maintenance`의 `VACUUM`과 Litestream의 충돌**: `VACUUM`은 DB를 재작성하므로 Litestream이 **전체 스냅샷을 재전송**한다. 단일 사용자 DB 크기(수십~수백 MB)에서 주 1회 재전송은 허용 가능하므로 그대로 둔다. 단 **`VACUUM` 직후 다음 스냅샷 완료 전까지는 복원 지점이 직전 스냅샷**이므로, `weekly_maintenance`는 `VACUUM` 후 Litestream 스냅샷 1회 성공을 확인하고 종료한다.
 

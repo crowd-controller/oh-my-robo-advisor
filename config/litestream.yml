@@ -1,0 +1,13 @@
+# Litestream v0.5: one replica per database.
+snapshot:
+  interval: 24h
+  retention: 720h
+retention:
+  enabled: true
+validation:
+  interval: 1h
+dbs:
+  - path: /app/var/db/omra.sqlite
+    replica:
+      url: ${LITESTREAM_REPLICA_URL}
+      sync-interval: 1s

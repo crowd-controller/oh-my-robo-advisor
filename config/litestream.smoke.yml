@@ -1,0 +1,13 @@
+snapshot:
+  interval: 1m
+  retention: 1h
+retention:
+  enabled: true
+validation:
+  interval: 1m
+dbs:
+  - path: /app/var/db/omra.sqlite
+    replica:
+      type: file
+      path: /replica/omra
+      sync-interval: 1s

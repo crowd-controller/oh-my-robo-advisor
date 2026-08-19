@@ -76,7 +76,7 @@
 - **추가 (30분, 코드 불필요)**: 우리가 쓰는 라이브러리(skfolio·pandas·QuantStats 등) + KIS 공식 레포의 **GitHub watch/release 알림 수동 설정**. [07]의 "M10a 이전에 지금 할 수 있는 것"이며, **M10a 이전에 [R4]를 위해 필요한 것은 이것이 전부다.**
 - **추가 (규칙)**: **시크릿 발급일을 6개월 이상 분산**한다. KIS 실전 앱키는 M0에서, 업비트 키는 M7 착수 시점에 발급한다 — 같은 달 만료는 그 달 부재가 곧 전면 정지를 뜻한다. 현 로드맵에서 M0와 M7은 40주 이상 떨어져 있어 이 규칙이 자연히 충족된다.
 
-**DoD**: `docker compose up` → 헬스체크 응답, CI green(import-linter 포함), 모의 앱키 토큰 발급 1회 성공, 시크릿 만료 대장([01 §6.2])에 **KIS 실전 앱키를 1급 항목으로 초기 등록**.
+**DoD**: `docker compose up --wait` → `omra ready` 성공, CI green(import-linter + credential-free `container-smoke` 포함), 모의 앱키 토큰 발급 1회 성공, 시크릿 만료 대장([01 §6.2])에 **KIS 실전 앱키를 1급 항목으로 초기 등록**. `container-smoke`의 Litestream file replica는 실제 S3 호환 저장소와 운영 복구 리허설을 대체하지 않는다.
 
 ---
 

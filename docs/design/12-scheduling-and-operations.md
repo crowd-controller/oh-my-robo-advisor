@@ -902,14 +902,16 @@ async def collect(ctx) -> HealthReport: ...
 | `dms_last_ping` | 마지막 ping 성공 이후 경과 | > 1h | > 6h | 01 §6.4 |
 | `backup` | Litestream 최신 스냅샷 나이 / restic 결과 | restic 3연속 실패 | Litestream 24h 초과 | 01 §6.2·§6.5 |
 
-**정본 열은 "항목의 출처"이지 "임계값의 출처"가 아니다.** 계획이 **값까지** 확정한 것은 `heartbeat_age` FAIL 180s·`loop_lag` WARN 500ms/FAIL 5000ms(01 §6.4·§9.2)·`disk` 80/90%(04 §M4, 00 §3.2 O3)·`surveillance_freshness` 2거래일(06 §8.3)·`secret_expiry` 30/7일(01 §6.2)·`backup`의 restic 3연속(01 §6.2)·Litestream 24h(01 §6.5 `snapshot-interval`)뿐이다. 나머지 WARN/FAIL 값(`heartbeat_age` 90s, `db_write`, `broker_token` 30분, `last_ingest` 26h/3거래일, `ws_sessions`, `job_health`, `api_error_rate` 5%/20%, `dms_last_ping` 1h/6h)은 [DD-12-4]와 같은 성격의 설계 기본값이며 config `monitoring.health.thresholds.*`로 오버라이드하고 **M4 실측으로 재캘리브레이션**한다(미해결 항목 7).
+**정본 열은 "항목의 출처"이지 "임계값의 출처"가 아니다.** 계획이 **값까지** 확정한 것은 `heartbeat_age` FAIL 180s·`loop_lag` WARN 500ms/FAIL 5000ms(01 §6.4·§9.2)·`disk` 80/90%(04 §M4, 00 §3.2 O3)·`surveillance_freshness` 2거래일(06 §8.3)·`secret_expiry` 30/7일(01 §6.2)·`backup`의 restic 3연속(01 §6.2)·Litestream 24h(01 §6.5 `snapshot.interval`)뿐이다. 나머지 WARN/FAIL 값(`heartbeat_age` 90s, `db_write`, `broker_token` 30분, `last_ingest` 26h/3거래일, `ws_sessions`, `job_health`, `api_error_rate` 5%/20%, `dms_last_ping` 1h/6h)은 [DD-12-4]와 같은 성격의 설계 기본값이며 config `monitoring.health.thresholds.*`로 오버라이드하고 **M4 실측으로 재캘리브레이션**한다(미해결 항목 7).
 
 > **[DD-12-13] healthcheck는 캐시된 관측치만 읽는다(네트워크 호출 0건)**
 > - 결정: `collect()`의 모든 항목은 메모리 스냅샷·SQLite·파일시스템만 읽는다. 토큰 유효성은 `broker_tokens.expires_at` 계산이지 검증 호출이 아니고, WS 상태는 세션 객체의 상태 필드다.
 > - 근거: Docker healthcheck가 60초 간격으로 실행되므로(정본: 01 §1.6) 네트워크 호출을 넣으면 하루 1,440콜이 API 예산에 추가되고, 더 나쁘게는 브로커 장애 시 healthcheck 자체가 타임아웃해 `unhealthy`가 원인이 아니라 증상을 가린다.
 > - 계획 문서와의 관계: 충돌 없음 — 01 §6.4 항목 목록의 산출 방식을 확정한다.
 
-### 11.2 `/healthz`와 CLI
+### 11.2 `/healthz`와 `omra health` (M3)
+
+M0의 `/readyz`와 `omra ready`는 공개 설정, SQLite 연결, Alembic head, 선언된 쓰기 볼륨만 확인하고 외부 네트워크를 호출하지 않는다. 이는 컨테이너 준비 상태이지 아래 최종 `HealthReport`의 대체물이 아니다.
 
 - 본문 생성 함수는 `monitoring.health.collect()`(이 문서 소유), FastAPI 라우터 마운트와 인증 정책은 [13-web-and-telegram.md](13-web-and-telegram.md) 소유.
 - 응답: `status != FAIL` → HTTP 200, `FAIL` → 503. 본문은 `HealthReport`의 JSON 직렬화.

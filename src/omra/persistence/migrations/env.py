@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from alembic import context
 from sqlalchemy import Connection, engine_from_config, pool
+from sqlalchemy.engine import make_url
 
 from omra.persistence.models import Base
 from omra.persistence.types import DecimalText, KSTDateTimeText
@@ -33,8 +34,11 @@ def _render_item(
     return False
 
 
-def _database_path(connection: Connection) -> Path:
-    database = connection.engine.url.database
+def _database_path() -> Path:
+    configured_url = config.get_main_option("sqlalchemy.url")
+    if configured_url is None:
+        raise SystemExit("sqlalchemy.url is required for guarded migrations")
+    database = make_url(configured_url).database
     if database is None or database == ":memory:":
         raise SystemExit("file-backed SQLite is required for guarded migrations")
     if database.startswith("file:"):
@@ -42,11 +46,27 @@ def _database_path(connection: Connection) -> Path:
     return Path(database)
 
 
-def _guard_or_abort(connection: Connection, db_dir: Path) -> None:
+def _kill_path_present(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    except OSError as error:
+        raise SystemExit("KILL switch state unavailable — migration refused") from error
+    return True
+
+
+def _guard_kill_paths(db_dir: Path) -> None:
     kill_path = db_dir.parent / "data" / "KILL"
-    if kill_path.exists():
+    if _kill_path_present(kill_path):
         raise SystemExit("KILL switch present — migration refused (01 §1.3)")
 
+    legacy_kill_path = db_dir / "KILL"
+    if _kill_path_present(legacy_kill_path):
+        raise SystemExit("legacy KILL path present — migration refused; move it to data/KILL")
+
+
+def _guard_stopped(connection: Connection) -> None:
     has_bot_state = connection.exec_driver_sql(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='bot_state'"
     ).scalar()
@@ -74,6 +94,8 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run guarded migrations against one file-backed SQLite database."""
+    database_path = _database_path()
+    _guard_kill_paths(database_path.parent)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -84,7 +106,7 @@ def run_migrations_online() -> None:
         connection.exec_driver_sql("PRAGMA busy_timeout=5000")
         connection.exec_driver_sql("PRAGMA synchronous=NORMAL")
         connection.exec_driver_sql("PRAGMA foreign_keys=ON")
-        _guard_or_abort(connection, _database_path(connection).parent)
+        _guard_stopped(connection)
         connection.commit()
         context.configure(
             connection=connection,
