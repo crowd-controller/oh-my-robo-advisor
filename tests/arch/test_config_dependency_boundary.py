@@ -4,6 +4,7 @@ import ast
 from pathlib import Path
 
 from omra.config.files import (
+    AutoAction,
     EquityRegions,
     ExternalIncome,
     ExternalIncomeFile,
@@ -15,6 +16,9 @@ from omra.config.files import (
     GoalsFile,
     MarketWeightsFile,
     RecordFile,
+    SecretRegistryEntry,
+    SecretsRegistryFile,
+    SecretTier,
     SurveillanceMapFile,
     SurvMapEntry,
     TargetsFile,
@@ -48,6 +52,14 @@ from omra.config.files.market_weights import (
 )
 from omra.config.files.schedules import ExternalSchedule as ModuleExternalSchedule
 from omra.config.files.schedules import ExternalSchedulesFile as ModuleExternalSchedulesFile
+from omra.config.files.secrets_registry import AutoAction as ModuleAutoAction
+from omra.config.files.secrets_registry import (
+    SecretRegistryEntry as ModuleSecretRegistryEntry,
+)
+from omra.config.files.secrets_registry import (
+    SecretsRegistryFile as ModuleSecretsRegistryFile,
+)
+from omra.config.files.secrets_registry import SecretTier as ModuleSecretTier
 from omra.config.files.surveillance_map import (
     SurveillanceMapFile as ModuleSurveillanceMapFile,
 )
@@ -89,6 +101,10 @@ def test_config_only_imports_config_or_core_inside_omra() -> None:
 
 def test_record_file_public_coordinates_are_stable() -> None:
     assert RecordFile is BaseRecordFile
+    assert AutoAction is ModuleAutoAction
+    assert SecretRegistryEntry is ModuleSecretRegistryEntry
+    assert SecretsRegistryFile is ModuleSecretsRegistryFile
+    assert SecretTier is ModuleSecretTier
     assert ExternalSchedule is ModuleExternalSchedule
     assert ExternalSchedulesFile is ModuleExternalSchedulesFile
     assert ExternalIncome is ModuleExternalIncome
